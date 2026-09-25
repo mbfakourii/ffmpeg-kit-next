@@ -42,7 +42,12 @@ namespace ffmpegkit {
             void Close() {
               SetEvent(stopped_);
               CancelIoEx(pipe_, nullptr);
-              DisconnectNamedPipe(pipe_);
+              std::lock_guard<std::mutex> writer_lock(writer_mutex_);
+              if (connected_) {
+                FlushFileBuffers(pipe_);
+                DisconnectNamedPipe(pipe_);
+                connected_ = false;
+              }
             }
 
             int WriteFileContents(const std::string& path) {

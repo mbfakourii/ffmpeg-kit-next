@@ -1,0 +1,24 @@
+diff --git a/libavformat/file.c b/libavformat/file.c
+--- a/libavformat/file.c
++++ b/libavformat/file.c
+@@ -37,6 +37,9 @@
+ #if HAVE_IO_H
+ #include <io.h>
+ #endif
++#if defined(_WIN32)
++#include <windows.h>
++#endif
+ #if HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
+@@ -147,5 +150,10 @@ static int file_read(URLContext *h, unsigned char *buf, int size)
+     int ret;
+     size = FFMIN(size, c->blocksize);
+     ret = read(c->fd, buf, size);
++#if defined(_WIN32)
++    if (ret == -1 && errno == EINVAL &&
++        GetLastError() == ERROR_PIPE_NOT_CONNECTED)
++        return AVERROR_EOF;
++#endif
+     if (ret == 0 && c->follow)
+         return AVERROR(EAGAIN);
