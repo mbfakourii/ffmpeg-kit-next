@@ -76,28 +76,23 @@ if test "x$enable_static_mingw_runtime" = "xyes"; then
       [AC_MSG_WARN([$ffmpegkit_runtime_archive not found, its dll stays a runtime dependency])])
   done
 
-  # winpthread additionally needs --whole-archive. libc++ itself calls
-  # pthread_create and is linked ahead of it, so a demand driven scan reads
-  # winpthread, finds nothing pending yet and discards it - the link then fails
-  # on undefined pthread_*. Pulling every member in unconditionally means the
-  # definitions are present no matter who asks for them later.
+  # libtool puts its postdeps ahead of -Wl archive arguments. Its -lpthread
+  # would select the import library before the static archive is scanned.
+  postdeps_CXX=`echo " $postdeps_CXX " | sed -e 's/ -lpthread / /g'`
+
+  # libtool also moves -Wl arguments after the system libraries in postdeps.
+  # Repeat winpthread's system dependencies there so the static archive can
+  # resolve them after it is scanned.
   ffmpegkit_winpthread=`$CXX -print-file-name=libwinpthread.a 2>/dev/null`
   AS_IF([test -f "$ffmpegkit_winpthread"],
-    [WINDOWS_LIBS="-Wl,--whole-archive,$ffmpegkit_winpthread,--no-whole-archive $WINDOWS_LIBS"],
+    [WINDOWS_LIBS="-Wl,$ffmpegkit_winpthread,-lmingwex,-lmsvcrt,-ladvapi32,-lshell32,-luser32,-lkernel32 $WINDOWS_LIBS"],
     [AC_MSG_WARN([libwinpthread.a not found, libwinpthread-1.dll stays a runtime dependency])
      WINDOWS_LIBS="-lpthread $WINDOWS_LIBS"])
 
   WINDOWS_LIBS="$FFMPEGKIT_STATIC_RUNTIME $WINDOWS_LIBS"
 
-  # libtool links the shared library with -nostdlib and supplies the C++ runtime
-  # itself, from the postdeps list it detected while configuring. That list names
-  # -lc++ and -lunwind, which resolve to the import libraries and put the dll
-  # dependency straight back. Because -nostdlib suppresses the driver's own
-  # stdlib handling, -static-libstdc++ never reaches it and is reported as an
-  # unused argument, so taking the shared ones out of postdeps here is what
-  # actually decides it. The static archives are added through WINDOWS_LIBS
-  # above; they cannot be substituted into postdeps, because libtool drops the
-  # -Wl, form out of it and relocates a bare path.
+  # libtool links with -nostdlib and injects runtime libraries from postdeps.
+  # Remove shared libc++ and libunwind there; their archives are in LIBADD.
   postdeps_CXX=`echo " $postdeps_CXX " | sed -e 's/ -lc++ / /g' -e 's/ -lunwind / /g'`
 
 else

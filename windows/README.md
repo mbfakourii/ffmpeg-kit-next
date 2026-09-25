@@ -52,9 +52,9 @@ GPL-licensed libraries.
 ./windows.sh --enable-lib-openssl --enable-lib-dav1d
 ```
 
-The MinGW-w64 runtime can be linked statically into the DLL (default) or shipped as separate DLLs in
-the bundle; see the [wiki](https://github.com/arthenica/ffmpeg-kit-next/wiki/Building-Windows) for
-details.
+By default, the build links the available MinGW-w64 runtime archives statically and bundles any
+remaining toolchain DLL dependencies. Use `--no-static-mingw-runtime` to bundle the runtime DLLs
+instead; see the [wiki](https://github.com/arthenica/ffmpeg-kit-next/wiki/Building-Windows) for details.
 
 Run `--help` to see all available build options.
 

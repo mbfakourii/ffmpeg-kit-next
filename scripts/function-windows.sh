@@ -710,8 +710,7 @@ create_ffmpegkit_package_config() {
   local RUNTIME_DLLS="$2"
 
   # pkg-config has no concept of a runtime dll, so the list is exposed as a
-  # custom variable: pkg-config --variable=runtime_dlls ffmpeg-kit-next. Empty
-  # when the toolchain runtime was linked statically, which is the default.
+  # custom variable: pkg-config --variable=runtime_dlls ffmpeg-kit-next.
   local RUNTIME_DLL_PATHS=""
   local RUNTIME_DLL
   for RUNTIME_DLL in ${RUNTIME_DLLS}; do
@@ -863,10 +862,6 @@ create_ffmpegkit_msvc_import_library() {
 # FACADES, WHICH SHIP WITH WINDOWS) AND THE BUNDLE'S OWN DLLs ARE SKIPPED.
 copy_mingw_runtime_libraries() {
   local BUNDLE_BIN_DIRECTORY="$1"
-
-  if [[ -z ${NO_STATIC_MINGW_RUNTIME} ]]; then
-    return 0
-  fi
 
   local TOOLCHAIN_BIN_DIRECTORY
   TOOLCHAIN_BIN_DIRECTORY=$(dirname "${CC}")
@@ -1107,8 +1102,7 @@ set_property(TARGET ffmpeg-kit-next::ffmpegkit APPEND PROPERTY
 ${INTERFACE_LINK_LIBRARIES})
 
 # DLLs that are not part of the link closure and therefore never appear in
-# \$<TARGET_RUNTIME_DLLS:...>. Empty when the toolchain runtime was linked
-# statically, which is the default; populated by --no-static-mingw-runtime.
+# \$<TARGET_RUNTIME_DLLS:...>.
 # Copy them next to the executable together with the runtime dlls, e.g.
 #
 #   add_custom_command(TARGET app POST_BUILD
@@ -1180,8 +1174,7 @@ create_windows_bundle() {
   # CREATE THE MSVC IMPORT LIBRARY AND MODULE DEFINITION FILE OF libffmpegkit (lib)
   create_ffmpegkit_msvc_import_library "${FFMPEG_KIT_BUNDLE_BIN_DIRECTORY}" "${FFMPEG_KIT_BUNDLE_LIB_DIRECTORY}" || return 1
 
-  # COPY THE MinGW TOOLCHAIN RUNTIME DLLs (bin). ONLY DOES ANYTHING UNDER
-  # --no-static-mingw-runtime; BY DEFAULT THE RUNTIME IS INSIDE THE DLLs ALREADY.
+  # COPY ANY MinGW TOOLCHAIN RUNTIME DLLs REFERENCED BY THE BUILT DLLs.
   local FFMPEG_KIT_RUNTIME_DLLS
   FFMPEG_KIT_RUNTIME_DLLS=$(copy_mingw_runtime_libraries "${FFMPEG_KIT_BUNDLE_BIN_DIRECTORY}") || return 1
 

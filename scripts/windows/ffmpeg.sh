@@ -39,6 +39,7 @@ STATIC_MINGW_RUNTIME_LDFLAGS=""
 if [[ -z ${NO_STATIC_MINGW_RUNTIME} ]]; then
   STATIC_MINGW_RUNTIME_DIR=$(get_static_mingw_runtime_dir) || return 1
   STATIC_MINGW_RUNTIME_LDFLAGS="--extra-ldflags=-L$(get_native_path "${STATIC_MINGW_RUNTIME_DIR}")"
+  LDFLAGS+=" -static-libgcc"
 fi
 
 echo -e "\nINFO: Using PKG_CONFIG_LIBDIR: ${PKG_CONFIG_LIBDIR}\n" 1>>"${BASEDIR}"/build.log 2>&1
