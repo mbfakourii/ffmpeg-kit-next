@@ -31,8 +31,7 @@ namespace ffmpegkit {
 class StreamInformation;
 
 namespace detail {
-inline std::shared_ptr<ffmpegkit::StreamInformation>
-adoptStreamInformation(FFKStreamInformation *handle);
+inline std::shared_ptr<ffmpegkit::StreamInformation> adoptStreamInformation(FFKStreamInformation *handle);
 }
 
 /**
@@ -59,13 +58,9 @@ class StreamInformation {
     static constexpr const char *KeyCodecTimeBase = "codec_time_base";
     static constexpr const char *KeyTags = "tags";
 
-    StreamInformation(
-        std::shared_ptr<ffmpegkit::json::Value> streamInformationValue)
-        : _handle(nullptr, ffk_stream_information_free) {
-        const std::string json =
-            ffmpegkit::detail::fromJson(streamInformationValue);
-        FFKStreamInformation *handle =
-            ffk_stream_information_create(json.c_str());
+    StreamInformation(std::shared_ptr<ffmpegkit::json::Value> streamInformationValue) : _handle(nullptr, ffk_stream_information_free) {
+        const std::string json = ffmpegkit::detail::fromJson(streamInformationValue);
+        FFKStreamInformation *handle = ffk_stream_information_create(json.c_str());
         ffmpegkit::detail::checkError();
         _handle.reset(handle, ffk_stream_information_free);
     }
@@ -134,38 +129,26 @@ class StreamInformation {
         return getProperty(KeyTags);
     }
 
-    std::shared_ptr<std::string> getStringProperty(const char *key) {
-        return ffmpegkit::detail::takeOptionalString(
-            ffk_stream_information_get_string_property(_handle.get(), key));
-    }
+    std::shared_ptr<std::string> getStringProperty(const char *key) { return ffmpegkit::detail::takeOptionalString(ffk_stream_information_get_string_property(_handle.get(), key)); }
 
     std::shared_ptr<int64_t> getNumberProperty(const char *key) {
         int64_t value = 0;
-        if (ffk_stream_information_get_number_property(_handle.get(), key,
-                                                       &value) == 0) {
+        if (ffk_stream_information_get_number_property(_handle.get(), key, &value) == 0) {
             return nullptr;
         }
         return std::make_shared<int64_t>(value);
     }
 
-    std::shared_ptr<ffmpegkit::json::Value> getProperty(const char *key) {
-        return ffmpegkit::detail::takeJson(
-            ffk_stream_information_get_property_json(_handle.get(), key));
-    }
+    std::shared_ptr<ffmpegkit::json::Value> getProperty(const char *key) { return ffmpegkit::detail::takeJson(ffk_stream_information_get_property_json(_handle.get(), key)); }
 
-    std::shared_ptr<ffmpegkit::json::Value> getAllProperties() {
-        return ffmpegkit::detail::takeJson(
-            ffk_stream_information_get_all_properties_json(_handle.get()));
-    }
+    std::shared_ptr<ffmpegkit::json::Value> getAllProperties() { return ffmpegkit::detail::takeJson(ffk_stream_information_get_all_properties_json(_handle.get())); }
 
   private:
-    friend std::shared_ptr<ffmpegkit::StreamInformation>
-    ffmpegkit::detail::adoptStreamInformation(FFKStreamInformation *);
+    friend std::shared_ptr<ffmpegkit::StreamInformation> ffmpegkit::detail::adoptStreamInformation(FFKStreamInformation *);
 
     struct Adopt {};
 
-    StreamInformation(FFKStreamInformation *handle, Adopt)
-        : _handle(handle, ffk_stream_information_free) {}
+    StreamInformation(FFKStreamInformation *handle, Adopt) : _handle(handle, ffk_stream_information_free) {}
 
     std::shared_ptr<FFKStreamInformation> _handle;
 };
@@ -173,29 +156,22 @@ class StreamInformation {
 namespace detail {
 
 /** Wraps a library stream information handle, taking ownership of it. */
-inline std::shared_ptr<ffmpegkit::StreamInformation>
-adoptStreamInformation(FFKStreamInformation *handle) {
+inline std::shared_ptr<ffmpegkit::StreamInformation> adoptStreamInformation(FFKStreamInformation *handle) {
     if (handle == nullptr) {
         return nullptr;
     }
-    return std::shared_ptr<ffmpegkit::StreamInformation>(
-        new ffmpegkit::StreamInformation(
-            handle, ffmpegkit::StreamInformation::Adopt()));
+    return std::shared_ptr<ffmpegkit::StreamInformation>(new ffmpegkit::StreamInformation(handle, ffmpegkit::StreamInformation::Adopt()));
 }
 
 /** Rebuilds a std::vector of streams from a library list and releases it. */
-inline std::shared_ptr<
-    std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>
-takeStreamInformationList(FFKStreamInformationList *list) {
-    auto result = std::make_shared<
-        std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>();
+inline std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>> takeStreamInformationList(FFKStreamInformationList *list) {
+    auto result = std::make_shared<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>();
     if (list == nullptr) {
         return result;
     }
     const size_t size = ffk_stream_information_list_size(list);
     for (size_t index = 0; index < size; index++) {
-        result->push_back(
-            adoptStreamInformation(ffk_stream_information_list_get(list, index)));
+        result->push_back(adoptStreamInformation(ffk_stream_information_list_get(list, index)));
     }
     ffk_stream_information_list_free(list);
     return result;

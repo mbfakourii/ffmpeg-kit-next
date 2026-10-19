@@ -37,8 +37,7 @@ class FFprobeSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-    create(const std::list<std::string> &arguments);
+    static std::shared_ptr<ffmpegkit::internal::FFprobeSession> create(const std::list<std::string> &arguments);
 
     /**
      * Builds a new FFprobe session.
@@ -47,9 +46,7 @@ class FFprobeSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback);
 
     /**
      * Builds a new FFprobe session.
@@ -59,10 +56,7 @@ class FFprobeSession : public AbstractSession {
      * @param logCallback      session specific log callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback,
-           const ffmpegkit::internal::LogCallback logCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback);
 
     /**
      * Builds a new FFprobe session.
@@ -73,11 +67,7 @@ class FFprobeSession : public AbstractSession {
      * @param logRedirectionStrategy  session specific log redirection strategy
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback,
-           const ffmpegkit::internal::LogCallback logCallback,
-           const LogRedirectionStrategy logRedirectionStrategy);
+    static std::shared_ptr<ffmpegkit::internal::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy);
 
     /**
      * Returns the session specific complete callback.
@@ -119,10 +109,7 @@ class FFprobeSession : public AbstractSession {
      * @param logCallback             session specific log callback
      * @param logRedirectionStrategy  session specific log redirection strategy
      */
-    FFprobeSession(const std::list<std::string> &arguments,
-                   const FFprobeSessionCompleteCallback completeCallback,
-                   const ffmpegkit::internal::LogCallback logCallback,
-                   const LogRedirectionStrategy logRedirectionStrategy);
+    FFprobeSession(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy);
 
     FFprobeSessionCompleteCallback _completeCallback;
 };

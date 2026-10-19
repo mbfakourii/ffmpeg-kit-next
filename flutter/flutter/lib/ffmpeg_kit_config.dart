@@ -88,6 +88,44 @@ class FFmpegKitConfig {
     }
   }
 
+  /// Permanently shuts down the native library shared by this process.
+  ///
+  /// [waitTimeout] is a total native wait budget in milliseconds: zero initiates
+  /// shutdown without waiting, a positive value bounds waiting, and a negative
+  /// value waits indefinitely. It must fit a signed 32-bit integer.
+  /// Returns true when counted native executions, callbacks, message delivery
+  /// and history cleanup have finished; false when work remains. Retry to wait
+  /// longer. Retries do not restart the native completion grace period.
+  ///
+  /// Requests FFmpeg cancellation, closes streams and disables redirection.
+  /// FFprobe cannot be cancelled. In-flight results and output are unpredictable.
+  /// Cancel and await required execution/output before shutdown when needed.
+  /// New executions return failed sessions without running or calling callbacks.
+  ///
+  /// Dart callback delivery stops when this method is called, including events
+  /// already queued on the channel. Native success does not wait for Futures
+  /// started by Dart callbacks or mean the Flutter engine can be unloaded.
+  /// Session getters remain usable for retained sessions; deleteSession or
+  /// clearSessions releases those native references. Stop stream writers first.
+  /// There is no restart, including after false. Never wait while holding a
+  /// resource that active work needs.
+  static Future<bool> shutdown(int waitTimeout) async {
+    RangeError.checkValueInInterval(
+        waitTimeout, -2147483648, 2147483647, 'waitTimeout');
+    FFmpegKitFactory.beginShutdown();
+    await init();
+    return _platform.ffmpegKitConfigShutdown(waitTimeout);
+  }
+
+  /// Returns whether native shutdown has begun, even if work remains.
+  /// Queries native state so shutdown initiated by another binding is visible.
+  static Future<bool> isShutdown() async {
+    await init();
+    final shutdown = await _platform.ffmpegKitConfigIsShutdown();
+    if (shutdown) FFmpegKitFactory.beginShutdown();
+    return shutdown;
+  }
+
   /// Sets and overrides "fontconfig" configuration directory.
   static Future<void> setFontconfigConfigurationPath(String path) async {
     try {

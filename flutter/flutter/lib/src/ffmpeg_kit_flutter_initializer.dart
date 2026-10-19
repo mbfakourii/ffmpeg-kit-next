@@ -74,7 +74,8 @@ class FFmpegKitInitializer {
       _initialized = true;
       await _instance._applyInitialLogLevel();
       if (printLoadConfirmation) {
-        await _platform.ffmpegKitFlutterInitializerPrintLoadConfirmation();
+        await _platform.ffmpegKitFlutterInitializerPrintLoadConfirmation(
+            FFmpegKitFactory.getVersion());
       }
       return true;
     }).catchError((Object error, StackTrace stackTrace) {
@@ -88,6 +89,7 @@ class FFmpegKitInitializer {
   }
 
   void _onEvent(dynamic event) {
+    if (FFmpegKitFactory.callbacksDisabled) return;
     if (event is Map<dynamic, dynamic>) {
       final Map<String, dynamic> eventMap = event.cast<String, dynamic>();
       final Map<dynamic, dynamic>? logEvent =
@@ -157,7 +159,8 @@ class FFmpegKitInitializer {
     }
 
     final globalLogCallbackFunction = FFmpegKitFactory.getGlobalLogCallback();
-    if (globalLogCallbackFunction != null) {
+    if (!FFmpegKitFactory.callbacksDisabled &&
+        globalLogCallbackFunction != null) {
       globalCallbackDefined = true;
 
       try {
@@ -233,7 +236,8 @@ class FFmpegKitInitializer {
 
     final globalStatisticsCallbackFunction =
         FFmpegKitFactory.getGlobalStatisticsCallback();
-    if (globalStatisticsCallbackFunction != null) {
+    if (!FFmpegKitFactory.callbacksDisabled &&
+        globalStatisticsCallbackFunction != null) {
       try {
         // NOTIFY GLOBAL CALLBACK DEFINED
         globalStatisticsCallbackFunction(statistics);
@@ -248,7 +252,7 @@ class FFmpegKitInitializer {
     final int sessionId = event["sessionId"];
 
     FFmpegKitConfig.getSession(sessionId).then((Session? session) {
-      if (session != null) {
+      if (session != null && !FFmpegKitFactory.callbacksDisabled) {
         if (session.isFFmpeg()) {
           final ffmpegSession = session as FFmpegSession;
           final FFmpegSessionCompleteCallback? completeCallback =
@@ -266,7 +270,8 @@ class FFmpegKitInitializer {
 
           final globalFFmpegSessionCompleteCallback =
               FFmpegKitFactory.getGlobalFFmpegSessionCompleteCallback();
-          if (globalFFmpegSessionCompleteCallback != null) {
+          if (!FFmpegKitFactory.callbacksDisabled &&
+              globalFFmpegSessionCompleteCallback != null) {
             try {
               // NOTIFY GLOBAL CALLBACK DEFINED
               globalFFmpegSessionCompleteCallback(ffmpegSession);
@@ -292,7 +297,8 @@ class FFmpegKitInitializer {
 
           final globalFFprobeSessionCompleteCallback =
               FFmpegKitFactory.getGlobalFFprobeSessionCompleteCallback();
-          if (globalFFprobeSessionCompleteCallback != null) {
+          if (!FFmpegKitFactory.callbacksDisabled &&
+              globalFFprobeSessionCompleteCallback != null) {
             try {
               // NOTIFY GLOBAL CALLBACK DEFINED
               globalFFprobeSessionCompleteCallback(ffprobeSession);
@@ -318,7 +324,8 @@ class FFmpegKitInitializer {
 
           final globalMediaInformationSessionCompleteCallback = FFmpegKitFactory
               .getGlobalMediaInformationSessionCompleteCallback();
-          if (globalMediaInformationSessionCompleteCallback != null) {
+          if (!FFmpegKitFactory.callbacksDisabled &&
+              globalMediaInformationSessionCompleteCallback != null) {
             try {
               // NOTIFY GLOBAL CALLBACK DEFINED
               globalMediaInformationSessionCompleteCallback(

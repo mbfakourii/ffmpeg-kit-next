@@ -30,9 +30,7 @@
 
 + (instancetype)fromData:(NSData *)data extension:(NSString *)extension;
 
-+ (instancetype)fromBytes:(const void *)bytes
-                   length:(NSUInteger)length
-                extension:(NSString *)extension;
++ (instancetype)fromBytes:(const void *)bytes length:(NSUInteger)length extension:(NSString *)extension;
 
 - (NSString *)getUrl;
 

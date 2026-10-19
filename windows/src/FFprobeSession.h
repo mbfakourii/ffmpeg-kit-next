@@ -42,10 +42,7 @@ class FFprobeSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFprobeSession>
-    create(const std::list<std::string> &arguments) {
-        return createInternal(arguments, nullptr, nullptr, -1);
-    }
+    static std::shared_ptr<ffmpegkit::FFprobeSession> create(const std::list<std::string> &arguments) { return createInternal(arguments, nullptr, nullptr, -1); }
 
     /**
      * Builds a new FFprobe session.
@@ -54,11 +51,7 @@ class FFprobeSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback) {
-        return createInternal(arguments, completeCallback, nullptr, -1);
-    }
+    static std::shared_ptr<ffmpegkit::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback) { return createInternal(arguments, completeCallback, nullptr, -1); }
 
     /**
      * Builds a new FFprobe session.
@@ -68,12 +61,7 @@ class FFprobeSession : public AbstractSession {
      * @param logCallback session specific log callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback,
-           const ffmpegkit::LogCallback logCallback) {
-        return createInternal(arguments, completeCallback, logCallback, -1);
-    }
+    static std::shared_ptr<ffmpegkit::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::LogCallback logCallback) { return createInternal(arguments, completeCallback, logCallback, -1); }
 
     /**
      * Builds a new FFprobe session.
@@ -84,13 +72,8 @@ class FFprobeSession : public AbstractSession {
      * @param logRedirectionStrategy session specific log redirection strategy
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFprobeSession>
-    create(const std::list<std::string> &arguments,
-           const FFprobeSessionCompleteCallback completeCallback,
-           const ffmpegkit::LogCallback logCallback,
-           const LogRedirectionStrategy logRedirectionStrategy) {
-        return createInternal(arguments, completeCallback, logCallback,
-                              static_cast<int>(logRedirectionStrategy));
+    static std::shared_ptr<ffmpegkit::FFprobeSession> create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy) {
+        return createInternal(arguments, completeCallback, logCallback, static_cast<int>(logRedirectionStrategy));
     }
 
     /**
@@ -101,12 +84,8 @@ class FFprobeSession : public AbstractSession {
     ffmpegkit::FFprobeSessionCompleteCallback getCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered =
-            ffk_session_get_complete_callback(handle(), &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::FFprobeSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::ffprobeSessionTrampoline);
+        const int registered = ffk_session_get_complete_callback(handle(), &callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::FFprobeSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::ffprobeSessionTrampoline);
     }
 
     bool isFFmpeg() const override { return false; }
@@ -116,29 +95,15 @@ class FFprobeSession : public AbstractSession {
     bool isMediaInformation() const override { return false; }
 
   private:
-    template <typename SessionType>
-    friend std::shared_ptr<SessionType>
-        ffmpegkit::detail::adoptSession(FFKSession *);
+    template <typename SessionType> friend std::shared_ptr<SessionType> ffmpegkit::detail::adoptSession(FFKSession *);
 
     explicit FFprobeSession(FFKSession *handle) : AbstractSession(handle) {}
 
-    static std::shared_ptr<ffmpegkit::FFprobeSession> createInternal(
-        const std::list<std::string> &arguments,
-        const ffmpegkit::FFprobeSessionCompleteCallback &completeCallback,
-        const ffmpegkit::LogCallback &logCallback,
-        const int logRedirectionStrategy) {
+    static std::shared_ptr<ffmpegkit::FFprobeSession> createInternal(const std::list<std::string> &arguments, const ffmpegkit::FFprobeSessionCompleteCallback &completeCallback, const ffmpegkit::LogCallback &logCallback, const int logRedirectionStrategy) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_ffprobe_session_create(
-            argumentArray.data(), argumentArray.size(),
-            completeCallback ? &ffmpegkit::detail::ffprobeSessionTrampoline
-                             : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(completeCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFprobeSessionCompleteCallback>(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(),
-            logRedirectionStrategy);
+        FFKSession *handle = ffk_ffprobe_session_create(argumentArray.data(), argumentArray.size(), completeCallback ? &ffmpegkit::detail::ffprobeSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(completeCallback),
+                                                        ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFprobeSessionCompleteCallback>(), ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback),
+                                                        ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(), logRedirectionStrategy);
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFprobeSession>(handle);
     }
@@ -148,15 +113,12 @@ namespace detail {
 
 /** @see logTrampoline */
 inline void ffprobeSessionTrampoline(FFKSession *session, void *userData) {
-    CallbackHolder<ffmpegkit::FFprobeSessionCompleteCallback> *holder =
-        static_cast<CallbackHolder<ffmpegkit::FFprobeSessionCompleteCallback> *>(
-            userData);
+    CallbackHolder<ffmpegkit::FFprobeSessionCompleteCallback> *holder = static_cast<CallbackHolder<ffmpegkit::FFprobeSessionCompleteCallback> *>(userData);
     if (holder == nullptr || !holder->function) {
         return;
     }
     try {
-        holder->function(adoptSession<ffmpegkit::FFprobeSession>(
-            ffk_session_retain(session)));
+        holder->function(adoptSession<ffmpegkit::FFprobeSession>(ffk_session_retain(session)));
     } catch (...) {
     }
 }

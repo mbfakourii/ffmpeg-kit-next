@@ -45,9 +45,7 @@ class MediaInformationSession;
  *
  * @param session session of the completed execution
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::MediaInformationSession> session)>
-    MediaInformationSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::MediaInformationSession> session)> MediaInformationSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

@@ -33,6 +33,10 @@ import java.util.concurrent.ExecutorService
  * <pre>
  * FFmpegSession asyncSession = FFmpegKit.executeAsync("-i file1.mp4 -c:v libxvid file1.avi", completeCallback, logCallback, statisticsCallback);
  * </pre>
+ * <p>After {@link FFmpegKitConfig#shutdown} every execute method fails the session with the reason
+ * "FFmpegKit has been shut down", without native execution or completion callbacks. Tasks submitted
+ * earlier but not run yet fail on their executors; their completion callbacks may run during
+ * shutdown grace and are dropped afterwards.
  */
 open class FFmpegKit private constructor() {
     companion object {

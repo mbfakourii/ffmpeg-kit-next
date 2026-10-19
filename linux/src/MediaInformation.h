@@ -43,13 +43,7 @@ class MediaInformation {
     static constexpr const char *KeyBitRate = "bit_rate";
     static constexpr const char *KeyTags = "tags";
 
-    MediaInformation(
-        std::shared_ptr<ffmpegkit::json::Value> mediaInformationValue,
-        std::shared_ptr<
-            std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>
-            streams,
-        std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>
-            chapters);
+    MediaInformation(std::shared_ptr<ffmpegkit::json::Value> mediaInformationValue, std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>> streams, std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>> chapters);
 
     /**
      * Returns file name.
@@ -112,16 +106,14 @@ class MediaInformation {
      *
      * @return streams vector
      */
-    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>
-    getStreams();
+    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>> getStreams();
 
     /**
      * Returns all chapters.
      *
      * @return chapters vector
      */
-    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>
-    getChapters();
+    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>> getChapters();
 
     /**
      * Returns the property associated with the key.
@@ -182,8 +174,7 @@ class MediaInformation {
 
   private:
     std::shared_ptr<ffmpegkit::json::Value> _mediaInformationValue;
-    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>
-        _streams;
+    std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>> _streams;
     std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>> _chapters;
 };
 

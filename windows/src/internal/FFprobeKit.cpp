@@ -21,139 +21,103 @@
 #include "FFmpegKit.h"
 #include "FFmpegKitConfig.h"
 
-static std::list<std::string>
-defaultGetMediaInformationCommandArguments(const std::string &path) {
-    return std::list<std::string>{"-v",
-                                  "error",
-                                  "-hide_banner",
-                                  "-print_format",
-                                  "json",
-                                  "-show_format",
-                                  "-show_streams",
-                                  "-show_chapters",
-                                  "-i",
-                                  path};
-}
+static std::list<std::string> defaultGetMediaInformationCommandArguments(const std::string &path) { return std::list<std::string>{"-v", "error", "-hide_banner", "-print_format", "json", "-show_format", "-show_streams", "-show_chapters", "-i", path}; }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-ffmpegkit::internal::FFprobeKit::executeWithArguments(
-    const std::list<std::string> &arguments) {
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeWithArguments(const std::list<std::string> &arguments) {
     auto session = ffmpegkit::internal::FFprobeSession::create(arguments);
     ffmpegkit::internal::FFmpegKitConfig::ffprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-ffmpegkit::internal::FFprobeKit::executeWithArgumentsAsync(
-    const std::list<std::string> &arguments,
-    FFprobeSessionCompleteCallback completeCallback) {
-    auto session =
-        ffmpegkit::internal::FFprobeSession::create(arguments, completeCallback);
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeWithArgumentsAsync(const std::list<std::string> &arguments, FFprobeSessionCompleteCallback completeCallback) {
+    auto session = ffmpegkit::internal::FFprobeSession::create(arguments, completeCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-ffmpegkit::internal::FFprobeKit::executeWithArgumentsAsync(
-    const std::list<std::string> &arguments,
-    FFprobeSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback) {
-    auto session = ffmpegkit::internal::FFprobeSession::create(
-        arguments, completeCallback, logCallback);
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeWithArgumentsAsync(const std::list<std::string> &arguments, FFprobeSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback) {
+    auto session = ffmpegkit::internal::FFprobeSession::create(arguments, completeCallback, logCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-ffmpegkit::internal::FFprobeKit::execute(const std::string command) {
-    auto session = ffmpegkit::internal::FFprobeSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()));
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::execute(const std::string command) {
+    auto session = ffmpegkit::internal::FFprobeSession::create(FFmpegKitConfig::parseArguments(command.c_str()));
     ffmpegkit::internal::FFmpegKitConfig::ffprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeAsync(
-    const std::string command,
-    FFprobeSessionCompleteCallback completeCallback) {
-    auto session = ffmpegkit::internal::FFprobeSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()), completeCallback);
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeAsync(const std::string command, FFprobeSessionCompleteCallback completeCallback) {
+    auto session = ffmpegkit::internal::FFprobeSession::create(FFmpegKitConfig::parseArguments(command.c_str()), completeCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeAsync(
-    const std::string command, FFprobeSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback) {
-    auto session = ffmpegkit::internal::FFprobeSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()), completeCallback,
-        logCallback);
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeKit::executeAsync(const std::string command, FFprobeSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback) {
+    auto session = ffmpegkit::internal::FFprobeSession::create(FFmpegKitConfig::parseArguments(command.c_str()), completeCallback, logCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFprobeExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::FFprobeKit::getMediaInformation(const std::string path) {
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformation(const std::string path) {
     auto arguments = defaultGetMediaInformationCommandArguments(path);
     auto session = ffmpegkit::internal::MediaInformationSession::create(arguments);
-    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(
-        session, ffmpegkit::internal::AbstractSession::
-                     DefaultTimeoutForAsynchronousMessagesInTransmit);
+    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(session, ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::FFprobeKit::getMediaInformation(const std::string path,
-                                           const int waitTimeout) {
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformation(const std::string path, const int waitTimeout) {
     auto arguments = defaultGetMediaInformationCommandArguments(path);
     auto session = ffmpegkit::internal::MediaInformationSession::create(arguments);
-    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(session,
-                                                           waitTimeout);
+    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(session, waitTimeout);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::FFprobeKit::getMediaInformationAsync(
-    const std::string path,
-    MediaInformationSessionCompleteCallback completeCallback) {
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationAsync(const std::string path, MediaInformationSessionCompleteCallback completeCallback) {
     auto arguments = defaultGetMediaInformationCommandArguments(path);
-    auto session =
-        ffmpegkit::internal::MediaInformationSession::create(arguments, completeCallback);
-    ffmpegkit::internal::FFmpegKitConfig::asyncGetMediaInformationExecute(
-        session, ffmpegkit::internal::AbstractSession::
-                     DefaultTimeoutForAsynchronousMessagesInTransmit);
+    auto session = ffmpegkit::internal::MediaInformationSession::create(arguments, completeCallback);
+    ffmpegkit::internal::FFmpegKitConfig::asyncGetMediaInformationExecute(session, ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::FFprobeKit::getMediaInformationAsync(
-    const std::string path,
-    MediaInformationSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback, const int waitTimeout) {
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationAsync(const std::string path, MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback, const int waitTimeout) {
     auto arguments = defaultGetMediaInformationCommandArguments(path);
-    auto session = ffmpegkit::internal::MediaInformationSession::create(
-        arguments, completeCallback, logCallback);
-    ffmpegkit::internal::FFmpegKitConfig::asyncGetMediaInformationExecute(session,
-                                                                waitTimeout);
+    auto session = ffmpegkit::internal::MediaInformationSession::create(arguments, completeCallback, logCallback);
+    ffmpegkit::internal::FFmpegKitConfig::asyncGetMediaInformationExecute(session, waitTimeout);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommand(
-    const std::string command) {
-    auto session = ffmpegkit::internal::MediaInformationSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()));
-    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(
-        session, ffmpegkit::internal::AbstractSession::
-                     DefaultTimeoutForAsynchronousMessagesInTransmit);
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommand(const std::string command) { return getMediaInformationFromCommandArguments(FFmpegKitConfig::parseArguments(command)); }
+
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandArguments(const std::list<std::string> &arguments) {
+    return getMediaInformationFromCommandArguments(arguments, ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit);
+}
+
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandArguments(const std::list<std::string> &arguments, const int waitTimeout) {
+    auto session = ffmpegkit::internal::MediaInformationSession::create(arguments);
+    ffmpegkit::internal::FFmpegKitConfig::getMediaInformationExecute(session, waitTimeout);
     return session;
 }
 
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFprobeSession>>>
-ffmpegkit::internal::FFprobeKit::listFFprobeSessions() {
-    return ffmpegkit::internal::FFmpegKitConfig::getFFprobeSessions();
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandAsync(const std::string command, MediaInformationSessionCompleteCallback completeCallback) {
+    return getMediaInformationFromCommandAsync(command, completeCallback, nullptr, ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit);
 }
 
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::MediaInformationSession>>>
-ffmpegkit::internal::FFprobeKit::listMediaInformationSessions() {
-    return ffmpegkit::internal::FFmpegKitConfig::getMediaInformationSessions();
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandAsync(const std::string command, MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback, const int waitTimeout) {
+    return getMediaInformationFromCommandArgumentsAsync(FFmpegKitConfig::parseArguments(command), completeCallback, logCallback, waitTimeout);
 }
+
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandArgumentsAsync(const std::list<std::string> &arguments, MediaInformationSessionCompleteCallback completeCallback) {
+    return getMediaInformationFromCommandArgumentsAsync(arguments, completeCallback, nullptr, ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit);
+}
+
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::FFprobeKit::getMediaInformationFromCommandArgumentsAsync(const std::list<std::string> &arguments, MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback,
+                                                                                                                                            const int waitTimeout) {
+    auto session = ffmpegkit::internal::MediaInformationSession::create(arguments, completeCallback, logCallback);
+    ffmpegkit::internal::FFmpegKitConfig::asyncGetMediaInformationExecute(session, waitTimeout);
+    return session;
+}
+
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFprobeSession>>> ffmpegkit::internal::FFprobeKit::listFFprobeSessions() { return ffmpegkit::internal::FFmpegKitConfig::getFFprobeSessions(); }
+
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::MediaInformationSession>>> ffmpegkit::internal::FFprobeKit::listMediaInformationSessions() { return ffmpegkit::internal::FFmpegKitConfig::getMediaInformationSessions(); }

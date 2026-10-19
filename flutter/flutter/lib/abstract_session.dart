@@ -104,8 +104,10 @@ abstract class AbstractSession extends Session {
     session._createTime = FFmpegKitFactory.validDate(sessionMap["createTime"]);
     session._startTime = FFmpegKitFactory.validDate(sessionMap["startTime"]);
     session._command = sessionMap["command"];
-    session._argumentsArray =
-        FFmpegKitConfig.parseArguments(sessionMap["command"]);
+    final nativeArguments = sessionMap["arguments"];
+    session._argumentsArray = nativeArguments == null
+        ? FFmpegKitConfig.parseArguments(sessionMap["command"])
+        : List<String>.from(nativeArguments);
     session._logRedirectionStrategy =
         FFmpegKitFactory.getLogRedirectionStrategy(session._sessionId);
 
@@ -158,8 +160,10 @@ abstract class AbstractSession extends Session {
     session._createTime = FFmpegKitFactory.validDate(sessionMap["createTime"]);
     session._startTime = FFmpegKitFactory.validDate(sessionMap["startTime"]);
     session._command = sessionMap["command"];
-    session._argumentsArray =
-        FFmpegKitConfig.parseArguments(sessionMap["command"]);
+    final nativeArguments = sessionMap["arguments"];
+    session._argumentsArray = nativeArguments == null
+        ? FFmpegKitConfig.parseArguments(sessionMap["command"])
+        : List<String>.from(nativeArguments);
     session._logRedirectionStrategy =
         FFmpegKitFactory.getLogRedirectionStrategy(session._sessionId);
 
@@ -208,8 +212,10 @@ abstract class AbstractSession extends Session {
     session._createTime = FFmpegKitFactory.validDate(sessionMap["createTime"]);
     session._startTime = FFmpegKitFactory.validDate(sessionMap["startTime"]);
     session._command = sessionMap["command"];
-    session._argumentsArray =
-        FFmpegKitConfig.parseArguments(sessionMap["command"]);
+    final nativeArguments = sessionMap["arguments"];
+    session._argumentsArray = nativeArguments == null
+        ? FFmpegKitConfig.parseArguments(sessionMap["command"])
+        : List<String>.from(nativeArguments);
     session._logRedirectionStrategy = LogRedirectionStrategy.neverPrintLogs;
 
     if (sessionMap.containsKey("mediaInformation")) {

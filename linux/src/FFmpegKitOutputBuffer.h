@@ -33,12 +33,9 @@ namespace ffmpegkit {
  */
 class FFmpegKitOutputBuffer {
   public:
-    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>
-    create(const std::string &extension);
+    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer> create(const std::string &extension);
 
-    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>
-    create(const std::string &extension, const long initialCapacity,
-           const long maxCapacity);
+    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer> create(const std::string &extension, const long initialCapacity, const long maxCapacity);
 
     ~FFmpegKitOutputBuffer();
 

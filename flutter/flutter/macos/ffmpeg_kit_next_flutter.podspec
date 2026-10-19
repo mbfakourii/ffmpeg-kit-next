@@ -1,6 +1,10 @@
+require 'yaml'
+
+pubspec = YAML.load_file(File.join(__dir__, '..', 'pubspec.yaml'))
+
 Pod::Spec.new do |s|
   s.name             = 'ffmpeg_kit_next_flutter'
-  s.version          = '9.0.0'
+  s.version          = pubspec['version'].split('+').first
   s.summary          = 'FFmpeg Kit Next for Flutter'
   s.description      = 'A Flutter plugin for running FFmpeg and FFprobe commands.'
   s.homepage         = 'https://github.com/arthenica/ffmpeg-kit-next'

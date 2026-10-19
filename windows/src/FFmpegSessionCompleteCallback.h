@@ -32,9 +32,7 @@ class FFmpegSession;
  * <p>Callback invoked when an asynchronous <code>FFmpeg</code> session ends
  * running. It runs on the asynchronous worker thread.
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::FFmpegSession> session)>
-    FFmpegSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::FFmpegSession> session)> FFmpegSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

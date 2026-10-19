@@ -38,9 +38,7 @@ class ReturnCode {
     bool isValueSuccess() const;
     bool isValueError() const;
     bool isValueCancel() const;
-    friend std::ostream &
-    operator<<(std::ostream &out,
-               const std::shared_ptr<ffmpegkit::ReturnCode> &o);
+    friend std::ostream &operator<<(std::ostream &out, const std::shared_ptr<ffmpegkit::ReturnCode> &o);
 
   private:
     int _value;

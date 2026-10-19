@@ -4,26 +4,25 @@
 
 - Includes both `FFmpeg` and `FFprobe`
 - Supports
-    - `Android`, `iOS`, `iPadOS`, `macOS` and `Linux`
+    - `Android`, `iOS`, `iPadOS`, `macOS`, `Linux` and `Windows`
     - `arm-v7a`, `arm-v7a-neon`, `arm64-v8a`, `x86` and `x86_64` architectures on Android
     - `Android API Level 24` or later
-    - `armv7`, `armv7s`, `arm64`, `arm64-simulator`, `i386`, `x86_64`, `x86_64-mac-catalyst` and `arm64-mac-catalyst`
+    - `arm64`, `arm64-simulator`, `arm64e`, `x86_64`, `x86_64-mac-catalyst` and `arm64-mac-catalyst`
       architectures on iOS
     - `iOS 12.1+` deployment targets
     - iPad devices and the iPad Simulator load `iOS` frameworks/xcframeworks
     - `arm64` and `x86_64` architectures on macOS
     - `macOS 10.15+` deployment targets
-    - `x86_64` and `arm64` architectures on Linux
+    - `arm64` and `x86_64` architectures on Linux
+    - `arm64` and `x86_64` architectures on Windows
     - Can process Storage Access Framework (SAF) Uris on Android
-    - 25 external libraries
+    - 39 external libraries
 
-      `dav1d`, `fontconfig`, `freetype`, `fribidi`, `gmp`, `gnutls`, `kvazaar`, `lame`, `libass`, `libiconv`, `libilbc`
-      , `libtheora`, `libvorbis`, `libvpx`, `libwebp`, `libxml2`, `opencore-amr`, `opus`, `shine`, `snappy`, `soxr`
-      , `speex`, `twolame`, `vo-amrwbenc`, `zimg`
+      `chromaprint`, `dav1d`, `fontconfig`, `freetype`, `fribidi`, `gmp`, `gnutls`, `harfbuzz`, `kvazaar`, `lame`, `libaom`, `libass`, `libiconv`, `libilbc`, `libjxl`, `liblc3`, `libsvtav1`, `libtheora`, `libvorbis`, `libvpx`, `libwebp`, `libxml2`, `opencore-amr`, `openh264`, `openssl`, `opus`, `sdl`, `shine`, `snappy`, `soxr`, `speex`, `srt`, `tesseract`, `twolame`, `vo-amrwbenc`, `vvenc`, `zimg`, `zlib`
 
-    - 4 external libraries with GPL license
+    - 5 external libraries with GPL license
 
-      `vid.stab`, `x264`, `x265`, `xvidcore`
+      `rubberband`, `vid.stab`, `x264`, `x265`, `xvidcore`
 
 - Licensed under `LGPL 3.0` by default, `GPL v3.0` if GPL licensed libraries are enabled
 
@@ -58,8 +57,15 @@ allprojects {
         mavenCentral()
         def ffmpegKitProject = rootProject.findProject(":ffmpeg_kit_next_flutter")
         if (ffmpegKitProject != null) {
-            maven {
-                url "${ffmpegKitProject.projectDir}/libs-maven"
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url "${ffmpegKitProject.projectDir}/libs-maven"
+                    }
+                }
+                filter {
+                    includeModule('com.arthenica', 'ffmpeg-kit-next')
+                }
             }
         }
     }

@@ -28,6 +28,10 @@ import 'src/ffmpeg_kit_factory.dart';
 import 'statistics_callback.dart';
 
 /// Main class to run "FFmpeg" commands.
+///
+/// Once [FFmpegKitConfig.shutdown] begins, new executions fail with
+/// "FFmpegKit has been shut down", without native execution or completion
+/// callbacks. In-flight results, output and callbacks are not guaranteed.
 class FFmpegKit {
   static FFmpegKitPlatform _platform = FFmpegKitPlatform.instance;
 

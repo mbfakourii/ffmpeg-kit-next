@@ -25,6 +25,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.function.BooleanSupplier;
+
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 
@@ -45,8 +47,13 @@ public class FFmpegKitFlutterMethodResultHandler {
         });
     }
 
-    void successAsync(final EventChannel.EventSink eventSink, final Object object) {
+    void successAsync(final EventChannel.EventSink eventSink, final Object object, final BooleanSupplier isCurrentSink) {
         handler.post(() -> {
+            // Cancellation, engine detachment or a new listener can invalidate
+            // the sink while this event is waiting on the platform queue.
+            if (!isCurrentSink.getAsBoolean()) {
+                return;
+            }
             if (eventSink != null) {
                 eventSink.success(object);
             } else {

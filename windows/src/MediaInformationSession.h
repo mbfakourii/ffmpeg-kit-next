@@ -29,8 +29,7 @@ namespace ffmpegkit {
 class MediaInformationSession;
 
 namespace detail {
-inline void mediaInformationSessionTrampoline(FFKSession *session,
-                                              void *userData);
+inline void mediaInformationSessionTrampoline(FFKSession *session, void *userData);
 }
 
 /**
@@ -45,10 +44,7 @@ class MediaInformationSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments) {
-        return createInternal(arguments, nullptr, nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments) { return createInternal(arguments, nullptr, nullptr); }
 
     /**
      * Builds a new media information session.
@@ -57,11 +53,7 @@ class MediaInformationSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::MediaInformationSessionCompleteCallback completeCallback) {
-        return createInternal(arguments, completeCallback, nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments, ffmpegkit::MediaInformationSessionCompleteCallback completeCallback) { return createInternal(arguments, completeCallback, nullptr); }
 
     /**
      * Builds a new media information session.
@@ -71,12 +63,7 @@ class MediaInformationSession : public AbstractSession {
      * @param logCallback session specific log callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::MediaInformationSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback) {
-        return createInternal(arguments, completeCallback, logCallback);
-    }
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments, ffmpegkit::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback) { return createInternal(arguments, completeCallback, logCallback); }
 
     /**
      * Returns the media information extracted in this session.
@@ -85,8 +72,7 @@ class MediaInformationSession : public AbstractSession {
      * the output can not be parsed
      */
     std::shared_ptr<ffmpegkit::MediaInformation> getMediaInformation() {
-        FFKMediaInformation *mediaInformation =
-            ffk_media_information_session_get_media_information(handle());
+        FFKMediaInformation *mediaInformation = ffk_media_information_session_get_media_information(handle());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptMediaInformation(mediaInformation);
     }
@@ -96,13 +82,8 @@ class MediaInformationSession : public AbstractSession {
      *
      * @param mediaInformation media information extracted
      */
-    void setMediaInformation(
-        const std::shared_ptr<ffmpegkit::MediaInformation> mediaInformation) {
-        ffk_media_information_session_set_media_information(
-            handle(), mediaInformation == nullptr
-                          ? nullptr
-                          : ffmpegkit::detail::mediaInformationHandle(
-                                *mediaInformation));
+    void setMediaInformation(const std::shared_ptr<ffmpegkit::MediaInformation> mediaInformation) {
+        ffk_media_information_session_set_media_information(handle(), mediaInformation == nullptr ? nullptr : ffmpegkit::detail::mediaInformationHandle(*mediaInformation));
         ffmpegkit::detail::checkError();
     }
 
@@ -114,12 +95,8 @@ class MediaInformationSession : public AbstractSession {
     ffmpegkit::MediaInformationSessionCompleteCallback getCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered =
-            ffk_session_get_complete_callback(handle(), &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::MediaInformationSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::mediaInformationSessionTrampoline);
+        const int registered = ffk_session_get_complete_callback(handle(), &callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::MediaInformationSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::mediaInformationSessionTrampoline);
     }
 
     bool isFFmpeg() const override { return false; }
@@ -129,51 +106,30 @@ class MediaInformationSession : public AbstractSession {
     bool isMediaInformation() const override { return true; }
 
   private:
-    template <typename SessionType>
-    friend std::shared_ptr<SessionType>
-        ffmpegkit::detail::adoptSession(FFKSession *);
+    template <typename SessionType> friend std::shared_ptr<SessionType> ffmpegkit::detail::adoptSession(FFKSession *);
 
-    explicit MediaInformationSession(FFKSession *handle)
-        : AbstractSession(handle) {}
+    explicit MediaInformationSession(FFKSession *handle) : AbstractSession(handle) {}
 
-    static std::shared_ptr<ffmpegkit::MediaInformationSession> createInternal(
-        const std::list<std::string> &arguments,
-        const ffmpegkit::MediaInformationSessionCompleteCallback
-            &completeCallback,
-        const ffmpegkit::LogCallback &logCallback) {
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> createInternal(const std::list<std::string> &arguments, const ffmpegkit::MediaInformationSessionCompleteCallback &completeCallback, const ffmpegkit::LogCallback &logCallback) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_media_information_session_create(
-            argumentArray.data(), argumentArray.size(),
-            completeCallback
-                ? &ffmpegkit::detail::mediaInformationSessionTrampoline
-                : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(completeCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::MediaInformationSessionCompleteCallback>(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>());
+        FFKSession *handle = ffk_media_information_session_create(argumentArray.data(), argumentArray.size(), completeCallback ? &ffmpegkit::detail::mediaInformationSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(completeCallback),
+                                                                  ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::MediaInformationSessionCompleteCallback>(), ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback),
+                                                                  ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>());
         ffmpegkit::detail::checkError();
-        return ffmpegkit::detail::adoptSession<
-            ffmpegkit::MediaInformationSession>(handle);
+        return ffmpegkit::detail::adoptSession<ffmpegkit::MediaInformationSession>(handle);
     }
 };
 
 namespace detail {
 
 /** @see logTrampoline */
-inline void mediaInformationSessionTrampoline(FFKSession *session,
-                                              void *userData) {
-    CallbackHolder<ffmpegkit::MediaInformationSessionCompleteCallback> *holder =
-        static_cast<
-            CallbackHolder<ffmpegkit::MediaInformationSessionCompleteCallback> *>(
-            userData);
+inline void mediaInformationSessionTrampoline(FFKSession *session, void *userData) {
+    CallbackHolder<ffmpegkit::MediaInformationSessionCompleteCallback> *holder = static_cast<CallbackHolder<ffmpegkit::MediaInformationSessionCompleteCallback> *>(userData);
     if (holder == nullptr || !holder->function) {
         return;
     }
     try {
-        holder->function(adoptSession<ffmpegkit::MediaInformationSession>(
-            ffk_session_retain(session)));
+        holder->function(adoptSession<ffmpegkit::MediaInformationSession>(ffk_session_retain(session)));
     } catch (...) {
     }
 }

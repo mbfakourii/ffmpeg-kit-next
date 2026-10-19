@@ -45,10 +45,7 @@ class FFmpegKitOutputBuffer {
      * @param extension file extension hint, for example "mp4"
      * @return created output buffer
      */
-    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>
-    create(const std::string &extension) {
-        return create(extension, DefaultInitialCapacity, 0);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer> create(const std::string &extension) { return create(extension, DefaultInitialCapacity, 0); }
 
     /**
      * Registers a new output buffer.
@@ -58,21 +55,15 @@ class FFmpegKitOutputBuffer {
      * @param maxCapacity maximum capacity in bytes, zero for the default
      * @return created output buffer
      */
-    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>
-    create(const std::string &extension, const long initialCapacity,
-           const long maxCapacity) {
+    static std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer> create(const std::string &extension, const long initialCapacity, const long maxCapacity) {
         if (initialCapacity < 0 || maxCapacity < 0) {
             throw ffmpegkit::Exception("capacities must not be negative");
         }
-        const long id =
-            ffmpegkit::FFmpegKitConfig::registerFFmpegKitOutputBuffer(
-                initialCapacity, maxCapacity);
+        const long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitOutputBuffer(initialCapacity, maxCapacity);
         if (id == 0) {
-            throw ffmpegkit::Exception(
-                "Failed to register FFmpegKit output buffer.");
+            throw ffmpegkit::Exception("Failed to register FFmpegKit output buffer.");
         }
-        return std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>(
-            new ffmpegkit::FFmpegKitOutputBuffer(id, extension));
+        return std::shared_ptr<ffmpegkit::FFmpegKitOutputBuffer>(new ffmpegkit::FFmpegKitOutputBuffer(id, extension));
     }
 
     ~FFmpegKitOutputBuffer() { close(); }
@@ -104,11 +95,9 @@ class FFmpegKitOutputBuffer {
      */
     std::shared_ptr<std::vector<uint8_t>> toByteArray() {
         ensureOpen();
-        auto output =
-            ffmpegkit::FFmpegKitConfig::getFFmpegKitOutputBuffer(_id);
+        auto output = ffmpegkit::FFmpegKitConfig::getFFmpegKitOutputBuffer(_id);
         if (output == nullptr) {
-            throw ffmpegkit::Exception(
-                "Failed to read FFmpegKit output buffer.");
+            throw ffmpegkit::Exception("Failed to read FFmpegKit output buffer.");
         }
         return output;
     }
@@ -126,10 +115,7 @@ class FFmpegKitOutputBuffer {
   private:
     static const long DefaultInitialCapacity = 4096;
 
-    FFmpegKitOutputBuffer(const long id, const std::string &extension)
-        : _id{id},
-          _url{ffmpegkit::detail::buildProtocolUrl("ffkitmem", id, extension)},
-          _closed{false} {}
+    FFmpegKitOutputBuffer(const long id, const std::string &extension) : _id{id}, _url{ffmpegkit::detail::buildProtocolUrl("ffkitmem", id, extension)}, _closed{false} {}
 
     void ensureOpen() {
         if (_closed) {

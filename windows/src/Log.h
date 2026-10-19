@@ -35,9 +35,7 @@ namespace ffmpegkit {
  */
 class Log {
   public:
-    Log(const long sessionId, const ffmpegkit::Level level,
-        const char *message)
-        : _sessionId{sessionId}, _level{level}, _message{message} {}
+    Log(const long sessionId, const ffmpegkit::Level level, const char *message) : _sessionId{sessionId}, _level{level}, _message{message} {}
 
     /**
      * Returns the session identifier.
@@ -74,17 +72,12 @@ inline std::shared_ptr<ffmpegkit::Log> takeLog(FFKLog *handle) {
         return nullptr;
     }
     const std::string message = takeString(ffk_log_get_message(handle));
-    return std::make_shared<ffmpegkit::Log>(
-        ffk_log_get_session_id(handle),
-        static_cast<ffmpegkit::Level>(ffk_log_get_level(handle)),
-        message.c_str());
+    return std::make_shared<ffmpegkit::Log>(ffk_log_get_session_id(handle), static_cast<ffmpegkit::Level>(ffk_log_get_level(handle)), message.c_str());
 }
 
 /** Rebuilds a std::list of logs from a library list and releases it. */
-inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>>
-takeLogList(FFKLogList *list) {
-    auto result =
-        std::make_shared<std::list<std::shared_ptr<ffmpegkit::Log>>>();
+inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>> takeLogList(FFKLogList *list) {
+    auto result = std::make_shared<std::list<std::shared_ptr<ffmpegkit::Log>>>();
     if (list == nullptr) {
         return result;
     }

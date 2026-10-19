@@ -26,59 +26,39 @@ extern "C" {
 void cancel_operation(long id);
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-ffmpegkit::internal::FFmpegKit::executeWithArguments(
-    const std::list<std::string> &arguments) {
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeWithArguments(const std::list<std::string> &arguments) {
     auto session = ffmpegkit::internal::FFmpegSession::create(arguments);
     ffmpegkit::internal::FFmpegKitConfig::ffmpegExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-ffmpegkit::internal::FFmpegKit::executeWithArgumentsAsync(
-    const std::list<std::string> &arguments,
-    FFmpegSessionCompleteCallback completeCallback) {
-    auto session =
-        ffmpegkit::internal::FFmpegSession::create(arguments, completeCallback);
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback) {
+    auto session = ffmpegkit::internal::FFmpegSession::create(arguments, completeCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFmpegExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-ffmpegkit::internal::FFmpegKit::executeWithArgumentsAsync(
-    const std::list<std::string> &arguments,
-    FFmpegSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback,
-    ffmpegkit::internal::StatisticsCallback statisticsCallback) {
-    auto session = ffmpegkit::internal::FFmpegSession::create(
-        arguments, completeCallback, logCallback, statisticsCallback);
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback,
+                                                                                                              ffmpegkit::internal::StatisticsCallback statisticsCallback) {
+    auto session = ffmpegkit::internal::FFmpegSession::create(arguments, completeCallback, logCallback, statisticsCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFmpegExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-ffmpegkit::internal::FFmpegKit::execute(const std::string command) {
-    auto session = ffmpegkit::internal::FFmpegSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()));
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::execute(const std::string command) {
+    auto session = ffmpegkit::internal::FFmpegSession::create(FFmpegKitConfig::parseArguments(command.c_str()));
     ffmpegkit::internal::FFmpegKitConfig::ffmpegExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeAsync(
-    const std::string command, FFmpegSessionCompleteCallback completeCallback) {
-    auto session = ffmpegkit::internal::FFmpegSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()), completeCallback);
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback) {
+    auto session = ffmpegkit::internal::FFmpegSession::create(FFmpegKitConfig::parseArguments(command.c_str()), completeCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFmpegExecute(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeAsync(
-    const std::string command, FFmpegSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback,
-    ffmpegkit::internal::StatisticsCallback statisticsCallback) {
-    auto session = ffmpegkit::internal::FFmpegSession::create(
-        FFmpegKitConfig::parseArguments(command.c_str()), completeCallback,
-        logCallback, statisticsCallback);
+std::shared_ptr<ffmpegkit::internal::FFmpegSession> ffmpegkit::internal::FFmpegKit::executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback, ffmpegkit::internal::StatisticsCallback statisticsCallback) {
+    auto session = ffmpegkit::internal::FFmpegSession::create(FFmpegKitConfig::parseArguments(command.c_str()), completeCallback, logCallback, statisticsCallback);
     ffmpegkit::internal::FFmpegKitConfig::asyncFFmpegExecute(session);
     return session;
 }
@@ -97,7 +77,4 @@ void ffmpegkit::internal::FFmpegKit::cancel(const long sessionId) {
     cancel_operation(sessionId);
 }
 
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFmpegSession>>>
-ffmpegkit::internal::FFmpegKit::listSessions() {
-    return ffmpegkit::internal::FFmpegKitConfig::getFFmpegSessions();
-}
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFmpegSession>>> ffmpegkit::internal::FFmpegKit::listSessions() { return ffmpegkit::internal::FFmpegKitConfig::getFFmpegSessions(); }

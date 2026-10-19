@@ -34,54 +34,24 @@
 }
 
 + (instancetype)create:(NSArray *)arguments {
-    return [[self alloc] init:arguments
-              withCompleteCallback:nil
-                   withLogCallback:nil
-            withStatisticsCallback:nil
-        withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
+    return [[self alloc] init:arguments withCompleteCallback:nil withLogCallback:nil withStatisticsCallback:nil withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
 }
 
-+ (instancetype)create:(NSArray *)arguments
-    withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback {
-    return [[self alloc] init:arguments
-              withCompleteCallback:completeCallback
-                   withLogCallback:nil
-            withStatisticsCallback:nil
-        withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback {
+    return [[self alloc] init:arguments withCompleteCallback:completeCallback withLogCallback:nil withStatisticsCallback:nil withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
 }
 
-+ (instancetype)create:(NSArray *)arguments
-      withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback
-           withLogCallback:(LogCallback)logCallback
-    withStatisticsCallback:(StatisticsCallback)statisticsCallback {
-    return [[self alloc] init:arguments
-              withCompleteCallback:completeCallback
-                   withLogCallback:logCallback
-            withStatisticsCallback:statisticsCallback
-        withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withStatisticsCallback:(StatisticsCallback)statisticsCallback {
+    return [[self alloc] init:arguments withCompleteCallback:completeCallback withLogCallback:logCallback withStatisticsCallback:statisticsCallback withLogRedirectionStrategy:[FFmpegKitConfig getLogRedirectionStrategy]];
 }
 
-+ (instancetype)create:(NSArray *)arguments
-          withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback
-               withLogCallback:(LogCallback)logCallback
-        withStatisticsCallback:(StatisticsCallback)statisticsCallback
-    withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
-    return [[self alloc] init:arguments
-              withCompleteCallback:completeCallback
-                   withLogCallback:logCallback
-            withStatisticsCallback:statisticsCallback
-        withLogRedirectionStrategy:logRedirectionStrategy];
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withStatisticsCallback:(StatisticsCallback)statisticsCallback withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
+    return [[self alloc] init:arguments withCompleteCallback:completeCallback withLogCallback:logCallback withStatisticsCallback:statisticsCallback withLogRedirectionStrategy:logRedirectionStrategy];
 }
 
-- (instancetype)init:(NSArray *)arguments
-          withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback
-               withLogCallback:(LogCallback)logCallback
-        withStatisticsCallback:(StatisticsCallback)statisticsCallback
-    withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
+- (instancetype)init:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withStatisticsCallback:(StatisticsCallback)statisticsCallback withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
 
-    self = [super init:arguments
-                   withLogCallback:logCallback
-        withLogRedirectionStrategy:logRedirectionStrategy];
+    self = [super init:arguments withLogCallback:logCallback withLogRedirectionStrategy:logRedirectionStrategy];
 
     if (self) {
         _statisticsCallback = statisticsCallback;
@@ -105,20 +75,14 @@
     [self waitForAsynchronousMessagesInTransmit:waitTimeout];
 
     if ([self thereAreAsynchronousMessagesInTransmit]) {
-        NSLog(
-            @"getAllStatisticsWithTimeout was called to return all statistics "
-            @"but "
-            @"there are still statistics being transmitted for session id %ld.",
-            [self getSessionId]);
+        NSLog(@"getAllStatisticsWithTimeout was called to return all statistics but there are still statistics being transmitted for session id %ld.", [self getSessionId]);
     }
 
     return [self getStatistics];
 }
 
 - (NSArray *)getAllStatistics {
-    return [self
-        getAllStatisticsWithTimeout:
-            AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
+    return [self getAllStatisticsWithTimeout:AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
 }
 
 - (NSArray *)getStatistics {

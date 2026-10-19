@@ -31,30 +31,19 @@
 
 static std::atomic<long> sessionIdGenerator(1);
 
-extern void
-addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
+extern void addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
 
-ffmpegkit::internal::AbstractSession::AbstractSession(
-    const std::list<std::string> &arguments,
-    const ffmpegkit::internal::LogCallback logCallback,
-    const LogRedirectionStrategy logRedirectionStrategy)
-    : _arguments{std::make_shared<std::list<std::string>>(arguments)},
-      _sessionId{sessionIdGenerator++}, _logCallback{logCallback},
-      _createTime{std::chrono::system_clock::now()},
-      _logs{std::make_shared<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>()},
-      _state{SessionStateCreated}, _returnCode{nullptr},
-      _logRedirectionStrategy{logRedirectionStrategy} {}
+ffmpegkit::internal::AbstractSession::AbstractSession(const std::list<std::string> &arguments, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy)
+    : _arguments{std::make_shared<std::list<std::string>>(arguments)}, _sessionId{sessionIdGenerator++}, _logCallback{logCallback}, _createTime{std::chrono::system_clock::now()}, _logs{std::make_shared<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>()}, _state{SessionStateCreated},
+      _returnCode{nullptr}, _logRedirectionStrategy{logRedirectionStrategy} {}
 
-void ffmpegkit::internal::AbstractSession::waitForAsynchronousMessagesInTransmit(
-    const int timeout) const {
+void ffmpegkit::internal::AbstractSession::waitForAsynchronousMessagesInTransmit(const int timeout) const {
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
     std::condition_variable condition_variable;
-    const std::chrono::time_point<std::chrono::system_clock> expireTime =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+    const std::chrono::time_point<std::chrono::system_clock> expireTime = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
 
-    while (this->thereAreAsynchronousMessagesInTransmit() &&
-           (std::chrono::system_clock::now() < expireTime)) {
+    while (this->thereAreAsynchronousMessagesInTransmit() && (std::chrono::system_clock::now() < expireTime)) {
         condition_variable.wait_for(lock, std::chrono::milliseconds(100));
     }
 }
@@ -65,47 +54,30 @@ ffmpegkit::internal::LogCallback ffmpegkit::internal::AbstractSession::getLogCal
 
 long ffmpegkit::internal::AbstractSession::getSessionId() const { return _sessionId; }
 
-std::chrono::time_point<std::chrono::system_clock>
-ffmpegkit::internal::AbstractSession::getCreateTime() const {
-    return _createTime;
-}
+std::chrono::time_point<std::chrono::system_clock> ffmpegkit::internal::AbstractSession::getCreateTime() const { return _createTime; }
 
-std::chrono::time_point<std::chrono::system_clock>
-ffmpegkit::internal::AbstractSession::getStartTime() const {
-    return _startTime;
-}
+std::chrono::time_point<std::chrono::system_clock> ffmpegkit::internal::AbstractSession::getStartTime() const { return _startTime; }
 
-std::chrono::time_point<std::chrono::system_clock>
-ffmpegkit::internal::AbstractSession::getEndTime() const {
-    return _endTime;
-}
+std::chrono::time_point<std::chrono::system_clock> ffmpegkit::internal::AbstractSession::getEndTime() const { return _endTime; }
 
 long ffmpegkit::internal::AbstractSession::getDuration() const {
-    const std::chrono::time_point<std::chrono::system_clock> startTime =
-        _startTime;
+    const std::chrono::time_point<std::chrono::system_clock> startTime = _startTime;
     const std::chrono::time_point<std::chrono::system_clock> endTime = _endTime;
 
-    if (startTime.time_since_epoch() != std::chrono::microseconds(0) &&
-        endTime.time_since_epoch() != std::chrono::microseconds(0)) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(endTime -
-                                                                     startTime)
-            .count();
+    if (startTime.time_since_epoch() != std::chrono::microseconds(0) && endTime.time_since_epoch() != std::chrono::microseconds(0)) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
     }
 
     return 0;
 }
 
-std::shared_ptr<std::list<std::string>>
-ffmpegkit::internal::AbstractSession::getArguments() const {
-    return _arguments;
-}
+std::shared_ptr<std::list<std::string>> ffmpegkit::internal::AbstractSession::getArguments() const { return _arguments; }
 
 std::string ffmpegkit::internal::AbstractSession::getCommand() const {
     return ffmpegkit::internal::FFmpegKitConfig::argumentsToString(_arguments);
 }
 
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-ffmpegkit::internal::AbstractSession::getAllLogsWithTimeout(const int waitTimeout) const {
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> ffmpegkit::internal::AbstractSession::getAllLogsWithTimeout(const int waitTimeout) const {
     this->waitForAsynchronousMessagesInTransmit(waitTimeout);
 
     if (this->thereAreAsynchronousMessagesInTransmit()) {
@@ -116,45 +88,28 @@ ffmpegkit::internal::AbstractSession::getAllLogsWithTimeout(const int waitTimeou
 
     return this->getLogs();
 }
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-ffmpegkit::internal::AbstractSession::getAllLogs() const {
-    return this->getAllLogsWithTimeout(
-        ffmpegkit::internal::AbstractSession::
-            DefaultTimeoutForAsynchronousMessagesInTransmit);
-}
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> ffmpegkit::internal::AbstractSession::getAllLogs() const { return this->getAllLogsWithTimeout(ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit); }
 
-std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-ffmpegkit::internal::AbstractSession::getLogs() const {
-    return _logs;
-}
+std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> ffmpegkit::internal::AbstractSession::getLogs() const { return _logs; }
 
-std::string ffmpegkit::internal::AbstractSession::getAllLogsAsStringWithTimeout(
-    const int waitTimeout) const {
+std::string ffmpegkit::internal::AbstractSession::getAllLogsAsStringWithTimeout(const int waitTimeout) const {
     this->waitForAsynchronousMessagesInTransmit(waitTimeout);
 
     if (this->thereAreAsynchronousMessagesInTransmit()) {
-        std::cout
-            << "getAllLogsAsStringWithTimeout was called to return all logs "
-               "but there are still logs being transmitted for session id "
-            << _sessionId << "." << std::endl;
+        std::cout << "getAllLogsAsStringWithTimeout was called to return all logs "
+                     "but there are still logs being transmitted for session id "
+                  << _sessionId << "." << std::endl;
     }
 
     return this->getLogsAsString();
 }
 
-std::string ffmpegkit::internal::AbstractSession::getAllLogsAsString() const {
-    return this->getAllLogsAsStringWithTimeout(
-        ffmpegkit::internal::AbstractSession::
-            DefaultTimeoutForAsynchronousMessagesInTransmit);
-}
+std::string ffmpegkit::internal::AbstractSession::getAllLogsAsString() const { return this->getAllLogsAsStringWithTimeout(ffmpegkit::internal::AbstractSession::DefaultTimeoutForAsynchronousMessagesInTransmit); }
 
 std::string ffmpegkit::internal::AbstractSession::getLogsAsString() const {
     std::string concatenatedString;
 
-    std::for_each(_logs->cbegin(), _logs->cend(),
-                  [&](std::shared_ptr<ffmpegkit::internal::Log> log) {
-                      concatenatedString.append(log->getMessage());
-                  });
+    std::for_each(_logs->cbegin(), _logs->cend(), [&](std::shared_ptr<ffmpegkit::internal::Log> log) { concatenatedString.append(log->getMessage()); });
 
     return concatenatedString;
 }
@@ -167,37 +122,24 @@ ffmpegkit::internal::SessionState ffmpegkit::internal::AbstractSession::getState
     return _state;
 }
 
-std::shared_ptr<ffmpegkit::internal::ReturnCode>
-ffmpegkit::internal::AbstractSession::getReturnCode() const {
-    return _returnCode;
-}
+std::shared_ptr<ffmpegkit::internal::ReturnCode> ffmpegkit::internal::AbstractSession::getReturnCode() const { return _returnCode; }
 
 std::string ffmpegkit::internal::AbstractSession::getFailStackTrace() const {
     return _failStackTrace;
 }
 
-ffmpegkit::internal::LogRedirectionStrategy
-ffmpegkit::internal::AbstractSession::getLogRedirectionStrategy() const {
-    return _logRedirectionStrategy;
-}
+ffmpegkit::internal::LogRedirectionStrategy ffmpegkit::internal::AbstractSession::getLogRedirectionStrategy() const { return _logRedirectionStrategy; }
 
-bool ffmpegkit::internal::AbstractSession::thereAreAsynchronousMessagesInTransmit()
-    const {
-    return (FFmpegKitConfig::messagesInTransmit(_sessionId) > 0);
-}
+bool ffmpegkit::internal::AbstractSession::thereAreAsynchronousMessagesInTransmit() const { return (FFmpegKitConfig::messagesInTransmit(_sessionId) > 0); }
 
-void ffmpegkit::internal::AbstractSession::addLog(
-    const std::shared_ptr<ffmpegkit::internal::Log> log) {
-    _logs->push_back(log);
-}
+void ffmpegkit::internal::AbstractSession::addLog(const std::shared_ptr<ffmpegkit::internal::Log> log) { _logs->push_back(log); }
 
 void ffmpegkit::internal::AbstractSession::startRunning() {
     _state = SessionStateRunning;
     _startTime = std::chrono::system_clock::now();
 }
 
-void ffmpegkit::internal::AbstractSession::complete(
-    const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) {
+void ffmpegkit::internal::AbstractSession::complete(const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) {
     _returnCode = returnCode;
     _state = SessionStateCompleted;
     _endTime = std::chrono::system_clock::now();

@@ -21,77 +21,38 @@
 #include "LogCallback.h"
 #include "MediaInformation.h"
 
-extern void
-addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
+extern void addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::MediaInformationSession::create(
-    const std::list<std::string> &arguments) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(
-        std::make_shared<
-            ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(
-            arguments, nullptr, nullptr));
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::MediaInformationSession::create(const std::list<std::string> &arguments) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(std::make_shared<ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(arguments, nullptr, nullptr));
     addSessionToSessionHistory(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::MediaInformationSession::create(
-    const std::list<std::string> &arguments,
-    ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(
-        std::make_shared<
-            ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(
-            arguments, completeCallback, nullptr));
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::MediaInformationSession::create(const std::list<std::string> &arguments, ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(std::make_shared<ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(arguments, completeCallback, nullptr));
     addSessionToSessionHistory(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::MediaInformationSession>
-ffmpegkit::internal::MediaInformationSession::create(
-    const std::list<std::string> &arguments,
-    ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(
-        std::make_shared<
-            ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(
-            arguments, completeCallback, logCallback));
+std::shared_ptr<ffmpegkit::internal::MediaInformationSession> ffmpegkit::internal::MediaInformationSession::create(const std::list<std::string> &arguments, ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::MediaInformationSession>(std::make_shared<ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession>(arguments, completeCallback, logCallback));
     addSessionToSessionHistory(session);
     return session;
 }
 
-struct ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession
-    : public ffmpegkit::internal::MediaInformationSession {
-    PublicMediaInformationSession(
-        const std::list<std::string> &arguments,
-        ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback,
-        ffmpegkit::internal::LogCallback logCallback)
-        : MediaInformationSession(arguments, completeCallback, logCallback) {}
+struct ffmpegkit::internal::MediaInformationSession::PublicMediaInformationSession : public ffmpegkit::internal::MediaInformationSession {
+    PublicMediaInformationSession(const std::list<std::string> &arguments, ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback) : MediaInformationSession(arguments, completeCallback, logCallback) {}
 };
 
-ffmpegkit::internal::MediaInformationSession::MediaInformationSession(
-    const std::list<std::string> &arguments,
-    ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback,
-    ffmpegkit::internal::LogCallback logCallback)
-    : ffmpegkit::internal::AbstractSession(
-          arguments, logCallback,
-          ffmpegkit::internal::LogRedirectionStrategyNeverPrintLogs),
-      _completeCallback{completeCallback}, _mediaInformation{nullptr} {}
+ffmpegkit::internal::MediaInformationSession::MediaInformationSession(const std::list<std::string> &arguments, ffmpegkit::internal::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback)
+    : ffmpegkit::internal::AbstractSession(arguments, logCallback, ffmpegkit::internal::LogRedirectionStrategyNeverPrintLogs), _completeCallback{completeCallback}, _mediaInformation{nullptr} {}
 
-std::shared_ptr<ffmpegkit::internal::MediaInformation>
-ffmpegkit::internal::MediaInformationSession::getMediaInformation() {
-    return _mediaInformation;
-}
+std::shared_ptr<ffmpegkit::internal::MediaInformation> ffmpegkit::internal::MediaInformationSession::getMediaInformation() { return _mediaInformation; }
 
-void ffmpegkit::internal::MediaInformationSession::setMediaInformation(
-    const std::shared_ptr<ffmpegkit::internal::MediaInformation> mediaInformation) {
-    _mediaInformation = mediaInformation;
-}
+void ffmpegkit::internal::MediaInformationSession::setMediaInformation(const std::shared_ptr<ffmpegkit::internal::MediaInformation> mediaInformation) { _mediaInformation = mediaInformation; }
 
-ffmpegkit::internal::MediaInformationSessionCompleteCallback
-ffmpegkit::internal::MediaInformationSession::getCompleteCallback() {
-    return _completeCallback;
-}
+ffmpegkit::internal::MediaInformationSessionCompleteCallback ffmpegkit::internal::MediaInformationSession::getCompleteCallback() { return _completeCallback; }
 
 bool ffmpegkit::internal::MediaInformationSession::isFFmpeg() const { return false; }
 

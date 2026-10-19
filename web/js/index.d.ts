@@ -559,7 +559,11 @@ export declare abstract class AbstractSession extends Session {
     getLogRedirectionStrategy(): number | null;
 
     /** Complete callback invoked once an asynchronous run finishes (null for sync runs). */
-    getCompleteCallback(): ((session: Session) => void) | null;
+    getCompleteCallback():
+        | FFmpegSessionCompleteCallback
+        | FFprobeSessionCompleteCallback
+        | MediaInformationSessionCompleteCallback
+        | null;
 
     /** Resolves true when native still has asynchronous messages queued for this session. */
     thereAreAsynchronousMessagesInTransmit(): Promise<boolean>;
@@ -635,6 +639,10 @@ export declare class MediaInformationSession extends AbstractSession implements 
  * Commands execute inside the FFmpegKit worker. Methods that accept a command
  * string parse it into arguments using FFmpegKitConfig.parseArguments(); use
  * the argument-array methods when arguments must be passed losslessly.
+ *
+ * After FFmpegKitConfig.shutdown() executions fail with "FFmpegKit has been shut down"
+ * without running or invoking completion callbacks. Sessions created on the page for
+ * rejection have no native session id and are not added to history.
  */
 export declare class FFmpegKit {
     /**
@@ -723,6 +731,10 @@ export declare class FFmpegKit {
  * Commands execute inside the FFmpegKit worker. Methods that accept a command
  * string parse it into arguments using FFmpegKitConfig.parseArguments(); use
  * the argument-array methods when arguments must be passed losslessly.
+ *
+ * After FFmpegKitConfig.shutdown() executions fail with "FFmpegKit has been shut down"
+ * without running or invoking completion callbacks. Sessions created on the page for
+ * rejection have no native session id and are not added to history.
  */
 export declare class FFprobeKit {
     /**
@@ -891,6 +903,10 @@ export declare class FFmpegKitConfig {
      * Terminates the wasm worker and drops runtime-owned session state. In-flight operations
      * are aborted, and later operations lazily start a fresh worker. User-registered callbacks
      * and global JS configuration are preserved.
+     *
+     * After shutdown() no worker is started again: init() and every operation that needs the
+     * worker reject with "FFmpegKit has been shut down", while executions still return failed
+     * sessions.
      */
     static uninit(): Promise<void>;
 
@@ -962,7 +978,11 @@ export declare class FFmpegKitConfig {
      */
     static disableStatistics(): Promise<void>;
 
-    /** Enables native log/statistics redirection to JS callbacks and session storage. */
+    /**
+     * Enables native log/statistics redirection to JS callbacks and session storage.
+     *
+     * Does nothing after shutdown.
+     */
     static enableRedirection(): Promise<void>;
 
     /**
@@ -970,6 +990,37 @@ export declare class FFmpegKitConfig {
      * receiving events.
      */
     static disableRedirection(): Promise<void>;
+
+    /**
+     * Permanently shuts FFmpegKit down and immediately refuses new executions.
+     * Running FFmpeg sessions are cancelled, streams closed, and undelivered log
+     * and statistics messages dropped. Native results are preserved; output and
+     * completion callbacks are not guaranteed. Cancel and await required results
+     * before shutdown when predictable results matter.
+     *
+     * The first call allows completion callbacks for at most two seconds, then
+     * up to one second for history cleanup, within its total wait budget. Queued
+     * work stays on its original native worker; if served after shutdown it fails
+     * without execution, and after grace its completion callbacks are dropped.
+     * New submissions fail with "FFmpegKit has been shut down" without callbacks.
+     * Session and global completion callbacks have separate cutoff checks.
+     *
+     * Running FFprobe/media information cannot be cancelled and may outlast grace.
+     * Retries only wait with a fresh deadline; they never restart grace. True means
+     * counted native work/history cleanup finished and running results reached the
+     * page; queued workers may still hold data and later release consumer captures.
+     * Keep cleanup code and state alive until all owners have released their data.
+     *
+     * The worker remains available until uninit(), after which no worker restarts.
+     * @param {number} waitTimeout Total wait budget in milliseconds; zero provides
+     * no grace on the first call and makes one nonblocking worker round trip;
+     * negative waits indefinitely for counted work, with grace still bounded.
+     * @returns {Promise<boolean>} Whether shutdown finished within the budget.
+     */
+    static shutdown(waitTimeout: number): Promise<boolean>;
+
+    /** Whether shutdown() was called on this page. Answers synchronously, without the worker. */
+    static isShutdown(): boolean;
 
     /** Points fontconfig at a directory containing a `fonts.conf` file. */
     static setFontconfigConfigurationPath(path: string): Promise<void>;
@@ -1051,6 +1102,9 @@ export declare class FFmpegKitConfig {
     // the run. The Flutter and React Native equivalents resolve with no value, so code
     // that must stay portable across platforms should keep using the session it already
     // holds rather than the resolved value.
+    //
+    // After shutdown the session fails with the reason "FFmpegKit has been shut down" and
+    // does not run or invoke completion callbacks.
     static ffmpegExecute(ffmpegSession: FFmpegSession): Promise<FFmpegSession>;
 
     static asyncFFmpegExecute(ffmpegSession: FFmpegSession): Promise<FFmpegSession>;

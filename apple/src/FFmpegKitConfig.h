@@ -73,6 +73,8 @@ typedef NS_ENUM(NSUInteger, Signal) {
  *
  * <p>Note that redirection is enabled by default. If you do not want to use its
  * functionality please use disableRedirection method to disable it.
+ *
+ * <p>Does nothing after shutdownWithTimeout:.
  */
 + (void)enableRedirection;
 
@@ -84,6 +86,40 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * <code>getMediaInformation</code> methods do not work.
  */
 + (void)disableRedirection;
+
+/**
+ * <p>Permanently shuts down FFmpegKit: requests FFmpeg cancellation, closes
+ * streams, disables redirection and drops pending messages and delete
+ * notifications. New executions fail without completion callbacks. Running
+ * FFprobe and media information executions cannot be cancelled.
+ *
+ * <p>Within waitTimeout, the first call allows up to two seconds of completion
+ * callback grace, then up to one second before clearing history. Queued blocks
+ * stay on their queues and fail without execution when served; their callbacks
+ * may run during grace and are dropped afterwards. Admitted callbacks may continue.
+ * Call again after NO to wait longer; retries never restart grace or callbacks.
+ *
+ * <p>In-flight results, full output and callbacks are not guaranteed. For
+ * predictable results, cancel and wait for execution and output delivery first.
+ * Even after YES, queued blocks and handles may retain sessions and invoke
+ * cleanup functions later; keep their code and state valid until released.
+ * Stop submissions and stream writers first. Do not wait while holding a lock
+ * or thread that active work needs.
+ *
+ * @param waitTimeout total wait budget in milliseconds; zero does not wait,
+ * a negative value waits indefinitely for counted work and history cleanup
+ * @return YES when running executions, admitted callbacks, message delivery
+ * and history cleanup have finished; NO at the deadline or from counted library
+ * work that cannot wait for itself. Queued blocks are excluded after grace.
+ */
++ (BOOL)shutdownWithTimeout:(int)waitTimeout;
+
+/**
+ * <p>Returns whether shutdownWithTimeout: was called.
+ *
+ * @return YES after shutdown, NO before
+ */
++ (BOOL)isShutdown;
 
 /**
  * <p>Sets and overrides <code>fontconfig</code> configuration directory.
@@ -106,8 +142,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param fontNameMapping   custom font name mappings, useful to access your
  * fonts with more friendly names
  */
-+ (void)setFontDirectory:(NSString *)fontDirectoryPath
-                    with:(NSDictionary *)fontNameMapping;
++ (void)setFontDirectory:(NSString *)fontDirectoryPath with:(NSDictionary *)fontNameMapping;
 
 /**
  * <p>Registers the fonts inside the given array of font directories, so they
@@ -123,8 +158,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param fontNameMapping   custom font name mappings, useful to access your
  * fonts with more friendly names
  */
-+ (void)setFontDirectoryList:(NSArray *)fontDirectoryList
-                        with:(NSDictionary *)fontNameMapping;
++ (void)setFontDirectoryList:(NSArray *)fontDirectoryList with:(NSDictionary *)fontNameMapping;
 
 /**
  * <p>Creates a new named pipe to use in <code>FFmpeg</code> operations.
@@ -180,8 +214,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param variableValue environment variable value
  * @return zero on success, non-zero on error
  */
-+ (int)setEnvironmentVariable:(NSString *)variableName
-                        value:(NSString *)variableValue;
++ (int)setEnvironmentVariable:(NSString *)variableName value:(NSString *)variableValue;
 
 /**
  * <p>Registers a new ignored signal. Ignored signals are not handled by
@@ -194,12 +227,23 @@ typedef NS_ENUM(NSUInteger, Signal) {
 /**
  * <p>Synchronously executes the FFmpeg session provided.
  *
+ * <p>After shutdownWithTimeout: the session fails with the reason "FFmpegKit
+ * has been shut down" and does not run.
+ *
  * @param ffmpegSession FFmpeg session which includes command options/arguments
  */
 + (void)ffmpegExecute:(FFmpegSession *)ffmpegSession;
 
 /**
  * <p>Synchronously executes the FFprobe session provided.
+ *
+ * <p>The session completes when FFprobe returns, without waiting for its output,
+ * which arrives as logs, to be delivered. An asynchronous execution calls its
+ * complete callbacks at that point. Use the session's getOutput or getAllLogs
+ * methods to wait for pending log delivery, subject to their timeouts.
+ *
+ * <p>After shutdownWithTimeout: the session fails with the reason "FFmpegKit
+ * has been shut down" and does not run.
  *
  * @param ffprobeSession FFprobe session which includes command
  * options/arguments
@@ -209,14 +253,15 @@ typedef NS_ENUM(NSUInteger, Signal) {
 /**
  * <p>Synchronously executes the media information session provided.
  *
+ * <p>After shutdownWithTimeout: the session fails with the reason "FFmpegKit
+ * has been shut down" and does not run.
+ *
  * @param mediaInformationSession media information session which includes
  * command options/arguments
  * @param waitTimeout             max time to wait until media information is
  * transmitted
  */
-+ (void)getMediaInformationExecute:
-            (MediaInformationSession *)mediaInformationSession
-                       withTimeout:(int)waitTimeout;
++ (void)getMediaInformationExecute:(MediaInformationSession *)mediaInformationSession withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFmpeg execution for the given session.
@@ -224,6 +269,11 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * <p>Note that this method returns immediately and does not wait the execution
  * to complete. You must use an FFmpegSessionCompleteCallback if you want to be
  * notified about the result.
+ *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
  *
  * @param ffmpegSession FFmpeg session which includes command options/arguments
  */
@@ -236,13 +286,17 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * to complete. You must use an FFmpegSessionCompleteCallback if you want to be
  * notified about the result.
  *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
+ *
  * @param ffmpegSession   FFmpeg session which includes command
  * options/arguments
  * @param queue           dispatch queue that will be used to run this
  * asynchronous operation
  */
-+ (void)asyncFFmpegExecute:(FFmpegSession *)ffmpegSession
-           onDispatchQueue:(dispatch_queue_t)queue;
++ (void)asyncFFmpegExecute:(FFmpegSession *)ffmpegSession onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given session.
@@ -250,6 +304,11 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * <p>Note that this method returns immediately and does not wait the execution
  * to complete. You must use an FFprobeSessionCompleteCallback if you want to be
  * notified about the result.
+ *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
  *
  * @param ffprobeSession FFprobe session which includes command
  * options/arguments
@@ -263,13 +322,17 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * to complete. You must use an FFprobeSessionCompleteCallback if you want to be
  * notified about the result.
  *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
+ *
  * @param ffprobeSession  FFprobe session which includes command
  * options/arguments
  * @param queue           dispatch queue that will be used to run this
  * asynchronous operation
  */
-+ (void)asyncFFprobeExecute:(FFprobeSession *)ffprobeSession
-            onDispatchQueue:(dispatch_queue_t)queue;
++ (void)asyncFFprobeExecute:(FFprobeSession *)ffprobeSession onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given media information
@@ -278,15 +341,18 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * <p>Note that this method returns immediately and does not wait the execution
  * to complete. You must use an MediaInformationSessionCompleteCallback if you
  * want to be notified about the result.
+ *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
  *
  * @param mediaInformationSession media information session which includes
  * command options/arguments
  * @param waitTimeout             max time to wait until media information is
  * transmitted
  */
-+ (void)asyncGetMediaInformationExecute:
-            (MediaInformationSession *)mediaInformationSession
-                            withTimeout:(int)waitTimeout;
++ (void)asyncGetMediaInformationExecute:(MediaInformationSession *)mediaInformationSession withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given media information
@@ -295,6 +361,11 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * <p>Note that this method returns immediately and does not wait the execution
  * to complete. You must use an MediaInformationSessionCompleteCallback if you
  * want to be notified about the result.
+ *
+ * <p>After shutdownWithTimeout: the session fails without running or invoking
+ * completion callbacks. A previously queued session fails on its dispatch
+ * queue when its block runs; its callbacks may run during shutdown's grace
+ * period and are dropped afterwards. See shutdownWithTimeout:.
  *
  * @param mediaInformationSession media information session which includes
  * command options/arguments
@@ -303,10 +374,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param waitTimeout             max time to wait until media information is
  * transmitted
  */
-+ (void)asyncGetMediaInformationExecute:
-            (MediaInformationSession *)mediaInformationSession
-                        onDispatchQueue:(dispatch_queue_t)queue
-                            withTimeout:(int)waitTimeout;
++ (void)asyncGetMediaInformationExecute:(MediaInformationSession *)mediaInformationSession onDispatchQueue:(dispatch_queue_t)queue withTimeout:(int)waitTimeout;
 
 /**
  * <p>Sets a global log callback to redirect FFmpeg/FFprobe logs.
@@ -331,8 +399,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param ffmpegSessionCompleteCallback complete callback or nil to disable a
  * previously defined callback
  */
-+ (void)enableFFmpegSessionCompleteCallback:
-    (FFmpegSessionCompleteCallback)ffmpegSessionCompleteCallback;
++ (void)enableFFmpegSessionCompleteCallback:(FFmpegSessionCompleteCallback)ffmpegSessionCompleteCallback;
 
 /**
  * <p>Returns the global FFmpegSessionCompleteCallback set.
@@ -348,8 +415,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param ffprobeSessionCompleteCallback complete callback or nil to disable a
  * previously defined callback
  */
-+ (void)enableFFprobeSessionCompleteCallback:
-    (FFprobeSessionCompleteCallback)ffprobeSessionCompleteCallback;
++ (void)enableFFprobeSessionCompleteCallback:(FFprobeSessionCompleteCallback)ffprobeSessionCompleteCallback;
 
 /**
  * <p>Returns the global FFprobeSessionCompleteCallback set.
@@ -365,9 +431,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @param mediaInformationSessionCompleteCallback complete callback or nil to
  * disable a previously defined callback
  */
-+ (void)enableMediaInformationSessionCompleteCallback:
-    (MediaInformationSessionCompleteCallback)
-        mediaInformationSessionCompleteCallback;
++ (void)enableMediaInformationSessionCompleteCallback:(MediaInformationSessionCompleteCallback)mediaInformationSessionCompleteCallback;
 
 /**
  * <p>Returns the global MediaInformationSessionCompleteCallback set.
@@ -375,8 +439,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  * @return global MediaInformationSessionCompleteCallback or nil if it is not
  * set
  */
-+ (MediaInformationSessionCompleteCallback)
-    getMediaInformationSessionCompleteCallback;
++ (MediaInformationSessionCompleteCallback)getMediaInformationSessionCompleteCallback;
 
 /**
  * Returns the current log level.
@@ -515,8 +578,7 @@ typedef NS_ENUM(NSUInteger, Signal) {
  *
  * @param logRedirectionStrategy log redirection strategy
  */
-+ (void)setLogRedirectionStrategy:
-    (LogRedirectionStrategy)logRedirectionStrategy;
++ (void)setLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy;
 
 /**
  * <p>Returns the number of async messages that are not transmitted to the

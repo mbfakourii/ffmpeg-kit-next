@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <utility>
@@ -190,18 +191,13 @@ class Value {
 
 inline Value::Value() : _type{Type::Null}, _bool{false}, _int{0}, _double{0} {}
 
-inline Value::Value(const bool value)
-    : _type{Type::Bool}, _bool{value}, _int{0}, _double{0} {}
+inline Value::Value(const bool value) : _type{Type::Bool}, _bool{value}, _int{0}, _double{0} {}
 
-inline Value::Value(const int64_t value)
-    : _type{Type::Int}, _bool{false}, _int{value}, _double{0} {}
+inline Value::Value(const int64_t value) : _type{Type::Int}, _bool{false}, _int{value}, _double{0} {}
 
-inline Value::Value(const double value)
-    : _type{Type::Double}, _bool{false}, _int{0}, _double{value} {}
+inline Value::Value(const double value) : _type{Type::Double}, _bool{false}, _int{0}, _double{value} {}
 
-inline Value::Value(std::string value)
-    : _type{Type::String}, _bool{false}, _int{0}, _double{0},
-      _string{std::move(value)} {}
+inline Value::Value(std::string value) : _type{Type::String}, _bool{false}, _int{0}, _double{0}, _string{std::move(value)} {}
 
 inline Value Value::makeArray() {
     Value value;
@@ -355,8 +351,7 @@ inline void serializeValue(const Value &value, std::string &out) {
         break;
     case Value::Type::Int: {
         char buffer[32];
-        std::snprintf(buffer, sizeof(buffer), "%lld",
-                      static_cast<long long>(*value.getInt()));
+        std::snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(*value.getInt()));
         out += buffer;
         break;
     }
@@ -455,6 +450,24 @@ class Parser {
         return true;
     }
 
+    /** Moves past the character when it is the next one. */
+    bool accept(const char expected) {
+        if (_position < _text.size() && _text[_position] == expected) {
+            _position++;
+            return true;
+        }
+        return false;
+    }
+
+    /** Moves past one or more decimal digits; false when there is none. */
+    bool acceptDigits() {
+        const size_t start = _position;
+        while (_position < _text.size() && _text[_position] >= '0' && _text[_position] <= '9') {
+            _position++;
+        }
+        return _position > start;
+    }
+
     static bool appendUtf8(uint32_t codepoint, std::string &out) {
         if (codepoint < 0x80) {
             out += static_cast<char>(codepoint);
@@ -507,6 +520,10 @@ class Parser {
             if (c == '"') {
                 return true;
             }
+            if (static_cast<unsigned char>(c) < 0x20) {
+                // JSON text escapes control characters inside strings
+                return false;
+            }
             if (c != '\\') {
                 out += c;
                 continue;
@@ -548,9 +565,7 @@ class Parser {
                 if (codepoint >= 0xd800 && codepoint <= 0xdbff) {
                     // A high surrogate is only valid when its low surrogate
                     // follows; the pair encodes a single codepoint.
-                    if (_position + 1 >= _text.size() ||
-                        _text[_position] != '\\' ||
-                        _text[_position + 1] != 'u') {
+                    if (_position + 1 >= _text.size() || _text[_position] != '\\' || _text[_position + 1] != 'u') {
                         return false;
                     }
                     _position += 2;
@@ -558,8 +573,10 @@ class Parser {
                     if (!parseHex4(low) || low < 0xdc00 || low > 0xdfff) {
                         return false;
                     }
-                    codepoint =
-                        0x10000 + ((codepoint - 0xd800) << 10) + (low - 0xdc00);
+                    codepoint = 0x10000 + ((codepoint - 0xd800) << 10) + (low - 0xdc00);
+                } else if (codepoint >= 0xdc00 && codepoint <= 0xdfff) {
+                    // A low surrogate is only valid after a high surrogate
+                    return false;
                 }
                 if (!appendUtf8(codepoint, out)) {
                     return false;
@@ -574,33 +591,45 @@ class Parser {
     }
 
     bool parseNumber(Value &out) {
+        // The JSON number grammar, which is stricter than std::stod: an
+        // optional minus, no leading zeros, digits on both sides of a decimal
+        // point and in an exponent, and nothing else
         const size_t start = _position;
-        if (_position < _text.size() &&
-            (_text[_position] == '-' || _text[_position] == '+')) {
-            _position++;
-        }
         bool isDouble = false;
-        while (_position < _text.size()) {
-            const char c = _text[_position];
-            if (c >= '0' && c <= '9') {
-                _position++;
-            } else if (c == '.' || c == 'e' || c == 'E' || c == '+' ||
-                       c == '-') {
-                isDouble = isDouble || c == '.' || c == 'e' || c == 'E';
-                _position++;
-            } else {
-                break;
+        accept('-');
+        if (!accept('0')) {
+            if (!acceptDigits()) {
+                return false;
             }
         }
-        if (_position == start) {
-            return false;
+        if (accept('.')) {
+            isDouble = true;
+            if (!acceptDigits()) {
+                return false;
+            }
+        }
+        if (accept('e') || accept('E')) {
+            isDouble = true;
+            if (!accept('+')) {
+                accept('-');
+            }
+            if (!acceptDigits()) {
+                return false;
+            }
         }
         const std::string number = _text.substr(start, _position - start);
         try {
             if (isDouble) {
                 out = Value(static_cast<double>(std::stod(number)));
             } else {
-                out = Value(static_cast<int64_t>(std::stoll(number)));
+                try {
+                    out = Value(static_cast<int64_t>(std::stoll(number)));
+                } catch (const std::out_of_range &) {
+                    // An integer outside the 64 bit range is still a number:
+                    // it is kept as a double, as MediaInformationJsonParser
+                    // does, instead of failing the whole document
+                    out = Value(static_cast<double>(std::stod(number)));
+                }
             }
         } catch (...) {
             return false;

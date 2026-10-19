@@ -1,6 +1,6 @@
 {
   "name": "ffmpeg-kit-next-react-native",
-  "version": "9.0.0",
+  "version": "9.0.1",
   "description": "FFmpeg Kit Next for React Native",
   "main": "src/index",
   "types": "src/index.d.ts",

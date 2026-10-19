@@ -45,8 +45,7 @@
  * @param completeCallback  session specific complete callback
  * @return created session
  */
-+ (instancetype)create:(NSArray *)arguments
-    withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback;
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback;
 
 /**
  * Builds a new FFmpeg session.
@@ -57,10 +56,7 @@
  * @param statisticsCallback    session specific statistics callback
  * @return created session
  */
-+ (instancetype)create:(NSArray *)arguments
-      withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback
-           withLogCallback:(LogCallback)logCallback
-    withStatisticsCallback:(StatisticsCallback)statisticsCallback;
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withStatisticsCallback:(StatisticsCallback)statisticsCallback;
 
 /**
  * Builds a new FFmpeg session.
@@ -72,11 +68,7 @@
  * @param logRedirectionStrategy  session specific log redirection strategy
  * @return created session
  */
-+ (instancetype)create:(NSArray *)arguments
-          withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback
-               withLogCallback:(LogCallback)logCallback
-        withStatisticsCallback:(StatisticsCallback)statisticsCallback
-    withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy;
++ (instancetype)create:(NSArray *)arguments withCompleteCallback:(FFmpegSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withStatisticsCallback:(StatisticsCallback)statisticsCallback withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy;
 
 /**
  * Returns the session specific statistics callback.

@@ -42,6 +42,10 @@ namespace ffmpegkit {
  * file1.mp4 -c:v libxvid file1.avi, [](auto session){ ... }, [](auto log){ ...
  * }, [](auto statistics){ ... });
  * </pre>
+ * <p>After FFmpegKitConfig::shutdown every execute method fails the session
+ * without native execution or completion callbacks. Previously submitted workers
+ * that have not claimed their session fail on their original threads; completion
+ * callbacks may run during shutdown grace and are dropped afterwards.
  */
 class FFmpegKit {
   public:
@@ -51,11 +55,9 @@ class FFmpegKit {
      * @param arguments FFmpeg command options/arguments as string list
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArguments(const std::list<std::string> &arguments) {
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArguments(const std::list<std::string> &arguments) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_ffmpegkit_execute_with_arguments(
-            argumentArray.data(), argumentArray.size());
+        FFKSession *handle = ffk_ffmpegkit_execute_with_arguments(argumentArray.data(), argumentArray.size());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFmpegSession>(handle);
     }
@@ -68,12 +70,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback) {
-        return executeWithArgumentsAsync(arguments, completeCallback, nullptr,
-                                         nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback) { return executeWithArgumentsAsync(arguments, completeCallback, nullptr, nullptr); }
 
     /**
      * <p>Starts an asynchronous FFmpeg execution with arguments provided.
@@ -85,26 +82,12 @@ class FFmpegKit {
      * @param statisticsCallback callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback,
-                              ffmpegkit::LogCallback logCallback,
-                              ffmpegkit::StatisticsCallback statisticsCallback) {
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_ffmpegkit_execute_with_arguments_async(
-            argumentArray.data(), argumentArray.size(),
-            completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline
-                             : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(completeCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFmpegSessionCompleteCallback>(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(),
-            ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
-            ffmpegkit::detail::makeCallbackHolder(statisticsCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::StatisticsCallback>());
+        FFKSession *handle = ffk_ffmpegkit_execute_with_arguments_async(argumentArray.data(), argumentArray.size(), completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(completeCallback),
+                                                                        ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFmpegSessionCompleteCallback>(), ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback),
+                                                                        ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(), ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback), ffmpegkit::detail::makeCallbackHolder(statisticsCallback),
+                                                                        ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::StatisticsCallback>());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFmpegSession>(handle);
     }
@@ -117,8 +100,7 @@ class FFmpegKit {
      * @param command FFmpeg command
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    execute(const std::string command) {
+    static std::shared_ptr<ffmpegkit::FFmpegSession> execute(const std::string command) {
         FFKSession *handle = ffk_ffmpegkit_execute(command.c_str());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFmpegSession>(handle);
@@ -132,11 +114,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback) {
-        return executeAsync(command, completeCallback, nullptr, nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback) { return executeAsync(command, completeCallback, nullptr, nullptr); }
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given command.
@@ -148,25 +126,10 @@ class FFmpegKit {
      * @param statisticsCallback callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback,
-                 ffmpegkit::LogCallback logCallback,
-                 ffmpegkit::StatisticsCallback statisticsCallback) {
-        FFKSession *handle = ffk_ffmpegkit_execute_async(
-            command.c_str(),
-            completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline
-                             : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(completeCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFmpegSessionCompleteCallback>(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(),
-            ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
-            ffmpegkit::detail::makeCallbackHolder(statisticsCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::StatisticsCallback>());
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback) {
+        FFKSession *handle = ffk_ffmpegkit_execute_async(command.c_str(), completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(completeCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFmpegSessionCompleteCallback>(),
+                                                         ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(), ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
+                                                         ffmpegkit::detail::makeCallbackHolder(statisticsCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::StatisticsCallback>());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFmpegSession>(handle);
     }
@@ -194,11 +157,7 @@ class FFmpegKit {
      *
      * @return all FFmpeg sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>>
-    listSessions() {
-        return ffmpegkit::detail::takeSessionList<ffmpegkit::FFmpegSession>(
-            ffk_ffmpegkit_list_sessions());
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>> listSessions() { return ffmpegkit::detail::takeSessionList<ffmpegkit::FFmpegSession>(ffk_ffmpegkit_list_sessions()); }
 };
 
 } // namespace ffmpegkit

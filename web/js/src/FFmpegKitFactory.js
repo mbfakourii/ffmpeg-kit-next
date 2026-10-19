@@ -31,6 +31,7 @@
 // direct import would close a cycle. Sessions are instantiated through
 // createSession(), which resolves the constructor at call time.
 
+import {argumentsToString} from './Arguments.js';
 import {
     DEFAULT_LOG_REDIRECTION_STRATEGY,
     LogRedirectionStrategy,
@@ -49,6 +50,10 @@ const MSG_ERROR = 3;
 const MSG_LOG = 4;
 const MSG_STATISTICS = 5;
 const MSG_SESSION_DELETED = 6;
+
+// Fail reason of every execution after shutdown, and rejection reason of every operation that
+// would have to start a worker after it. The same text as the native libraries use.
+const SHUTDOWN_REASON = 'FFmpegKit has been shut down';
 
 function copyUint8Array(data) {
     return data instanceof Uint8Array ? new Uint8Array(data) : data;
@@ -127,10 +132,20 @@ class FFmpegKitFactory {
         this._initPromise = null;
         this._resolveInit = null;
         this._rejectInit = null;
+
+        // One-way, for the lifetime of the page, and kept through uninit(): once set, no
+        // execution reaches the worker and no worker is started again. See shutdown().
+        this._shutdown = false;
+        // Woken whenever an execution settles; see _waitForExecutions().
+        this._executionWaiters = new Set();
+        // Fixed by the first shutdown call; retries never reopen callback admission.
+        this._shutdownGraceDeadline = 0;
     }
 
     initialize(printLoadConfirmation = true) {
         if (this._initPromise) return this._initPromise;
+        if (this._shutdown)
+            return Promise.reject(new Error(SHUTDOWN_REASON));
 
         this._initPromise = new Promise((resolve, reject) => {
             this._resolveInit = resolve;
@@ -213,6 +228,7 @@ class FFmpegKitFactory {
         this._forgetAllSessions();
         this._info = null;
         this._seq = 0;
+        this._notifyExecutionWaiters();
     }
 
     // Mirrors native AbstractSession::fail(): records the stack trace, moves the
@@ -244,6 +260,130 @@ class FFmpegKitFactory {
     // adds nothing of its own - see _failRuntime for what is dropped and why.
     async uninit() {
         this._failRuntime(new Error('FFmpegKit web runtime was uninitialized.'));
+    }
+
+    // ---- Shutdown (FFmpegKitConfig.shutdown/isShutdown) ----------------------------
+    // Native waiting stays on the worker event loop. Page completion admission has the
+    // same first-call grace budget, checked separately for session and global callbacks.
+    async shutdown(waitTimeout) {
+        const timeout = Number(waitTimeout);
+        const waitMs = timeout < 0 || timeout === Infinity ? Infinity : Number.isFinite(timeout) ? Math.max(0, timeout) : 0;
+        const deadline = Date.now() + waitMs;
+        if (!this._shutdown) {
+            this._shutdown = true;
+            this._shutdownGraceDeadline = Math.min(Date.now() + 2000, deadline);
+        }
+        if (!this._worker) {
+            this._shutdownGraceDeadline = 0;
+            return true;
+        }
+
+        let nativeDone;
+        try {
+            const msg = await this._call('shutdown', {waitTimeout : waitMs});
+            nativeDone = msg.result?.done === true;
+            if (nativeDone) {
+                // Native success excludes workers still queued after grace. Keep their
+                // pending requests alive for their eventual results, without waiting here.
+                this._shutdownGraceDeadline = 0;
+                const queuedIds = new Set(msg.result.queuedSessionIds || []);
+                for (const pending of this._pending.values()) {
+                    if (queuedIds.has(pending.session?.getSessionId()))
+                        pending.shutdownQueued = true;
+                }
+                // Release page routing/history references too. Pending requests retain
+                // their own session objects and still receive eventual terminal results.
+                this._forgetAllSessions();
+            }
+        } catch (e) {
+            if (this._worker)
+                throw e;
+            nativeDone = true;
+        }
+        const executionsDone = await this._waitForExecutions(deadline);
+        return nativeDone && executionsDone;
+    }
+
+    isShutdown() { return this._shutdown; }
+
+    // Resolves true once no execution submitted to the worker is waiting for its result on this
+    // page, false when one still is at the deadline. An execution settles in _onMessage() or
+    // _failRuntime(), right after its complete callbacks ran, and wakes the waiters there.
+    _waitForExecutions(deadline) {
+        if (!this._hasPendingExecutions())
+            return Promise.resolve(true);
+        const remaining = deadline - Date.now();
+        if (remaining <= 0)
+            return Promise.resolve(false);
+        return new Promise((resolve) => {
+            const finish = (done) => {
+                clearTimeout(timer);
+                this._executionWaiters.delete(waiter);
+                resolve(done);
+            };
+            const waiter = () => {
+                if (!this._hasPendingExecutions())
+                    finish(true);
+            };
+            // Without a limit only a settling execution wakes it: a timer cannot hold Infinity.
+            const timer = remaining === Infinity ? undefined : setTimeout(() => finish(!this._hasPendingExecutions()), remaining);
+            this._executionWaiters.add(waiter);
+        });
+    }
+
+    _hasPendingExecutions() {
+        for (const pending of this._pending.values()) {
+            if (pending.session && !pending.shutdownQueued)
+                return true;
+        }
+        return false;
+    }
+
+    _notifyExecutionWaiters() {
+        for (const waiter of [...this._executionWaiters])
+            waiter();
+    }
+
+    // Waits for the worker, unless the library is shut down before or during the wait. False
+    // means the execution must not reach the worker and is failed on this page instead.
+    async _readyToExecute() {
+        if (this._shutdown)
+            return false;
+        try {
+            await this.initialize();
+        } catch (e) {
+            if (this._shutdown)
+                return false;
+            throw e;
+        }
+        return !this._shutdown;
+    }
+
+    // New submissions fail without native work or completion callbacks.
+    _rejectAfterShutdown(session) {
+        this._failSession(session, new Error(SHUTDOWN_REASON));
+        return session;
+    }
+
+    // FFmpegKit/FFprobeKit executions after shutdown. Creating their session would need the
+    // worker too, so it is built here instead: it has no native session id and is not in the
+    // session history, its callbacks live on the session object, and it fails as
+    // _rejectAfterShutdown() fails it.
+    rejectedSession(sessionType, commandArguments, callbacks = {}, async = false) {
+        const session = createSession(sessionType);
+        const argumentList = Array.isArray(commandArguments) ? commandArguments : [];
+        session._arguments = argumentList;
+        session._command = argumentsToString(argumentList);
+        session._createTime = Date.now();
+        session._completeCallback = callbacks.completeCallback || null;
+        session._logCallback = callbacks.logCallback || null;
+        if (session.isFFmpeg())
+            session._statisticsCallback = callbacks.statisticsCallback || null;
+        // As createFFmpegSession()/createFFprobeSession() assign it; a media information
+        // session keeps the NEVER_PRINT_LOGS its constructor sets.
+        if (!session.isMediaInformation())
+            session._logRedirectionStrategy = this._logRedirectionStrategy;
+        return this._rejectAfterShutdown(session, async);
     }
 
     // ---- Global callback registry (FFmpegKitConfig.enableLog/StatisticsCallback) --
@@ -391,6 +531,8 @@ class FFmpegKitFactory {
     // These are all `async` so that a bad session rejects the returned promise instead
     // of throwing out of the call itself - Flutter and React Native always hand back a
     // Future/Promise here, so a synchronous throw would slip past a caller's .catch().
+    //
+    // After shutdown none of them reaches the worker; see _rejectAfterShutdown().
     _execPayload(session) {
         const sessionId = session.getSessionId();
         if (sessionId == null) {
@@ -702,7 +844,8 @@ class FFmpegKitFactory {
     // Runs an execute/probe op whose reply carries a serialized session. Resolves the
     // returned promise with the populated public session object.
     async _run(op, args, session) {
-        await this.initialize();
+        if (!(await this._readyToExecute()))
+            return this._rejectAfterShutdown(session, false);
         const id = ++this._seq;
         return new Promise((resolve, reject) => {
             this._pending.set(id, {resolve, reject, session});
@@ -727,7 +870,8 @@ class FFmpegKitFactory {
     // request. The session's completeCallback is invoked later when the terminal
     // result or error arrives from the worker.
     async _runAsync(op, args, session) {
-        await this.initialize();
+        if (!(await this._readyToExecute()))
+            return this._rejectAfterShutdown(session, true);
         const id = ++this._seq;
         return new Promise((resolve, reject) => {
             this._pending.set(id, {resolve, reject, session, settled: true});
@@ -838,12 +982,13 @@ class FFmpegKitFactory {
     // exactly what the Flutter and React Native plugins do: forward waitTimeout to native
     // and hand back what it returns, holding no opinion of their own.
     //
-    // Each resolves null when there is nothing to ask: no session id, or no runtime. A
+    // Each resolves null with no session id/runtime, or once shutdown drops history. A
     // getter must never start one, and a freshly booted module would not know this
     // session id anyway - the session then answers from the record it already holds.
     async _getAll(op, session, waitTimeout) {
         const sessionId = session?.getSessionId?.();
-        if (sessionId == null || !this._worker) return null;
+        if (sessionId == null || !this._worker || this._shutdown)
+            return null;
 
         const payload = {sessionId};
         if (waitTimeout != null) payload.waitTimeout = waitTimeout;
@@ -977,7 +1122,8 @@ class FFmpegKitFactory {
             // result replaces the buffer with the full native record.
             session?._addLog(log);
 
-            if (!this._logsEnabled) {
+            // After shutdown the worker forwards nothing; one already posted is not told either.
+            if (!this._logsEnabled || this._shutdown) {
                 return;
             }
             this._dispatchLog(log);
@@ -991,7 +1137,7 @@ class FFmpegKitFactory {
             const session = this._sessionsById.get(sessionId) ?? null;
             const statistics = new Statistics(msg.statistics);
             session?._addStatistics?.(statistics);
-            if (!this._statisticsEnabled) {
+            if (!this._statisticsEnabled || this._shutdown) {
                 return;
             }
             this._dispatchStatistics(statistics);
@@ -1003,6 +1149,17 @@ class FFmpegKitFactory {
 
         // Terminal messages.
         this._pending.delete(msg.id);
+        try {
+            this._settlePending(pending, msg);
+        } finally {
+            // A shutdown waiting for the executions submitted before it wakes up here, after the
+            // complete callbacks of this one ran.
+            if (pending.session)
+                this._notifyExecutionWaiters();
+        }
+    }
+
+    _settlePending(pending, msg) {
         if (msg.type === MSG_ERROR) {
             this._failPending(pending, new Error(msg.message || 'worker error'));
             return;
@@ -1029,9 +1186,15 @@ class FFmpegKitFactory {
         if (!session) return;
         const sessionId = session.getSessionId();
         if (sessionId != null && this._sessionsById.get(sessionId) !== session) return;
+        this._invokeCompleteCallbacks(session);
+    }
 
+    _completionAllowed() { return !this._shutdown || Date.now() < this._shutdownGraceDeadline; }
+
+    // Calls the session's complete callback, then the global one of its type.
+    _invokeCompleteCallbacks(session) {
         const sessionCallback = session.getCompleteCallback?.() || null;
-        if (typeof sessionCallback === 'function') {
+        if (typeof sessionCallback === 'function' && this._completionAllowed()) {
             try {
                 sessionCallback(session);
             } catch (e) {
@@ -1048,7 +1211,7 @@ class FFmpegKitFactory {
             globalCallback = this._mediaInformationSessionCompleteCallback;
         }
 
-        if (typeof globalCallback === 'function') {
+        if (typeof globalCallback === 'function' && this._completionAllowed()) {
             try {
                 globalCallback(session);
             } catch (e) {
@@ -1088,7 +1251,7 @@ class FFmpegKitFactory {
                 console.log('Exception thrown inside session log callback.', e);
             }
         }
-        if (globalCallback) {
+        if (globalCallback && !this._shutdown) {
             try {
                 globalCallback(log);
             } catch (e) {
@@ -1131,7 +1294,7 @@ class FFmpegKitFactory {
                 console.log('Exception thrown inside session statistics callback.', e);
             }
         }
-        if (globalCallback) {
+        if (globalCallback && !this._shutdown) {
             try {
                 globalCallback(statistics);
             } catch (e) {

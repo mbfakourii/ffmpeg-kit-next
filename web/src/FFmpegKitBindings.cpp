@@ -44,6 +44,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <exception>
 #include <list>
 #include <map>
 #include <memory>
@@ -158,16 +159,13 @@ val listToArray(const std::shared_ptr<std::list<std::shared_ptr<T>>> &items) {
     return array;
 }
 
-template <typename T>
-val sessionIdsToArray(
-    const std::shared_ptr<std::list<std::shared_ptr<T>>> &sessions) {
+template <typename T> val sessionIdsToArray(const std::shared_ptr<std::list<std::shared_ptr<T>>> &sessions) {
     val array = val::array();
     if (sessions) {
         int index = 0;
         for (const auto &session : *sessions) {
             if (session) {
-                array.set(index++,
-                          static_cast<double>(session->getSessionId()));
+                array.set(index++, static_cast<double>(session->getSessionId()));
             }
         }
     }
@@ -248,12 +246,7 @@ val packages_getExternalLibraries() { return stringSetToArray(Packages::getExter
 
 // Session timestamps as epoch milliseconds (doubles). JS wraps them in Date; a value
 // of 0 means the timestamp is not set yet (e.g. end time before completion).
-double session_timeMillis(
-    const std::chrono::time_point<std::chrono::system_clock> &tp) {
-    return static_cast<double>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch())
-            .count());
-}
+double session_timeMillis(const std::chrono::time_point<std::chrono::system_clock> &tp) { return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count()); }
 double session_getCreateTimeMillis(AbstractSession &self) { return session_timeMillis(self.getCreateTime()); }
 double session_getStartTimeMillis(AbstractSession &self) { return session_timeMillis(self.getStartTime()); }
 double session_getEndTimeMillis(AbstractSession &self) { return session_timeMillis(self.getEndTime()); }
@@ -297,24 +290,11 @@ SessionState sessionStateFromInt(const int state) {
     }
 }
 
-std::shared_ptr<FFmpegSession>
-ffmpegSession_create(const val arguments, const int logRedirectionStrategy) {
-    return FFmpegSession::create(
-        jsArrayToStringList(arguments), nullptr, nullptr, nullptr,
-        logRedirectionStrategyFromInt(logRedirectionStrategy));
-}
+std::shared_ptr<FFmpegSession> ffmpegSession_create(const val arguments, const int logRedirectionStrategy) { return FFmpegSession::create(jsArrayToStringList(arguments), nullptr, nullptr, nullptr, logRedirectionStrategyFromInt(logRedirectionStrategy)); }
 
-std::shared_ptr<FFprobeSession>
-ffprobeSession_create(const val arguments, const int logRedirectionStrategy) {
-    return FFprobeSession::create(
-        jsArrayToStringList(arguments), nullptr, nullptr,
-        logRedirectionStrategyFromInt(logRedirectionStrategy));
-}
+std::shared_ptr<FFprobeSession> ffprobeSession_create(const val arguments, const int logRedirectionStrategy) { return FFprobeSession::create(jsArrayToStringList(arguments), nullptr, nullptr, logRedirectionStrategyFromInt(logRedirectionStrategy)); }
 
-std::shared_ptr<MediaInformationSession>
-mediaInformationSession_create(const val arguments) {
-    return MediaInformationSession::create(jsArrayToStringList(arguments));
-}
+std::shared_ptr<MediaInformationSession> mediaInformationSession_create(const val arguments) { return MediaInformationSession::create(jsArrayToStringList(arguments)); }
 
 std::shared_ptr<FFmpegSession> config_getFFmpegSession(const long sessionId) {
     auto session = FFmpegKitConfig::getSession(sessionId);
@@ -332,8 +312,7 @@ std::shared_ptr<FFprobeSession> config_getFFprobeSession(const long sessionId) {
     return std::dynamic_pointer_cast<FFprobeSession>(session);
 }
 
-std::shared_ptr<MediaInformationSession>
-config_getMediaInformationSession(const long sessionId) {
+std::shared_ptr<MediaInformationSession> config_getMediaInformationSession(const long sessionId) {
     auto session = FFmpegKitConfig::getSession(sessionId);
     if (session == nullptr || !session->isMediaInformation()) {
         return nullptr;
@@ -355,21 +334,18 @@ config_getMediaInformationSession(const long sessionId) {
 // resolves only once the run completes); it is built on top of these async forms, by
 // starting the session and polling it to completion. See waitForSession() in
 // ffmpegkit.worker.js. Do not bind the synchronous forms "for completeness".
-void config_asyncFFmpegExecuteSession(
-    const std::shared_ptr<FFmpegSession> session) {
-    FFmpegKitConfig::asyncFFmpegExecute(session);
-}
+void config_asyncFFmpegExecuteSession(const std::shared_ptr<FFmpegSession> session) { FFmpegKitConfig::asyncFFmpegExecute(session); }
 
-void config_asyncFFprobeExecuteSession(
-    const std::shared_ptr<FFprobeSession> session) {
-    FFmpegKitConfig::asyncFFprobeExecute(session);
-}
+void config_asyncFFprobeExecuteSession(const std::shared_ptr<FFprobeSession> session) { FFmpegKitConfig::asyncFFprobeExecute(session); }
 
-void config_asyncGetMediaInformationExecuteSession(
-    const std::shared_ptr<MediaInformationSession> session,
-    const int waitTimeout) {
-    FFmpegKitConfig::asyncGetMediaInformationExecute(session, waitTimeout);
-}
+void config_asyncGetMediaInformationExecuteSession(const std::shared_ptr<MediaInformationSession> session, const int waitTimeout) { FFmpegKitConfig::asyncGetMediaInformationExecute(session, waitTimeout); }
+
+// ---- Shutdown ----------------------------------------------------------------
+// The runtime thread initiates shutdown with the caller's grace budget without
+// blocking, then polls shutdown(0) on its event loop. Other threads may wait.
+bool config_shutdown(const int waitTimeout) { return FFmpegKitConfig::shutdown(waitTimeout); }
+
+bool config_isShutdown() { return FFmpegKitConfig::isShutdown(); }
 
 // ---- FFmpegKit / FFprobeKit statics -----------------------------------------
 // Free wrappers avoid embind overload-resolution issues (execute/cancel are
@@ -385,8 +361,7 @@ std::shared_ptr<FFmpegSession> ffmpegKit_execute(const std::string command) {
 // observes completion by polling the session state; the completion callback is a
 // no-op here because delivering it to JS would require cross-thread val proxying.
 std::shared_ptr<FFmpegSession> ffmpegKit_executeAsync(const std::string command) {
-    return FFmpegKit::executeAsync(
-        command, [](std::shared_ptr<ffmpegkit::FFmpegSession>) {});
+    return FFmpegKit::executeAsync(command, [](std::shared_ptr<ffmpegkit::FFmpegSession>) {});
 }
 void ffmpegKit_cancel() { FFmpegKit::cancel(); }
 void ffmpegKit_cancelSession(const long sessionId) { FFmpegKit::cancel(sessionId); }
@@ -412,10 +387,7 @@ val config_getLastCompletedSessionId() {
     return val(static_cast<double>(session->getSessionId()));
 }
 
-val config_getSessionsByStateIds(const int state) {
-    return sessionIdsToArray(
-        FFmpegKitConfig::getSessionsByState(sessionStateFromInt(state)));
-}
+val config_getSessionsByStateIds(const int state) { return sessionIdsToArray(FFmpegKitConfig::getSessionsByState(sessionStateFromInt(state))); }
 
 val config_getFFmpegSessionIds() {
     return sessionIdsToArray(FFmpegKitConfig::getFFmpegSessions());
@@ -432,10 +404,7 @@ val config_getMediaInformationSessionIds() {
 std::shared_ptr<FFprobeSession> ffprobeKit_execute(const std::string command) {
     return FFprobeKit::execute(command);
 }
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformation(const std::string path) {
-    return FFprobeKit::getMediaInformation(path);
-}
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformation(const std::string path) { return FFprobeKit::getMediaInformation(path); }
 
 std::list<std::string> jsArrayToStringList(const val &array) {
     std::list<std::string> result;
@@ -480,12 +449,7 @@ std::map<std::string, std::string> jsObjectToStringMap(const val &object) {
 // setFontDirectoryList() with a one-element list, and FFmpegKitConfig.setFontDirectory()
 // on the JS side already fans out to the list form, so a second binding would only be a
 // second way to reach the same code - one the worker never takes.
-void config_setFontDirectoryList(const val fontDirectoryList,
-                                 const val fontNameMapping) {
-    FFmpegKitConfig::setFontDirectoryList(
-        jsArrayToStringList(fontDirectoryList),
-        jsObjectToStringMap(fontNameMapping));
-}
+void config_setFontDirectoryList(const val fontDirectoryList, const val fontNameMapping) { FFmpegKitConfig::setFontDirectoryList(jsArrayToStringList(fontDirectoryList), jsObjectToStringMap(fontNameMapping)); }
 
 // ---- Arguments-array + async execute wrappers -------------------------------
 // jsArrayToStringList (above) converts a JS string array to std::list<string>. The
@@ -496,53 +460,30 @@ std::shared_ptr<FFmpegSession> ffmpegKit_executeWithArguments(const val argument
     return FFmpegKit::executeWithArguments(jsArrayToStringList(arguments));
 }
 std::shared_ptr<FFmpegSession> ffmpegKit_executeWithArgumentsAsync(const val arguments) {
-    return FFmpegKit::executeWithArgumentsAsync(
-        jsArrayToStringList(arguments), [](std::shared_ptr<ffmpegkit::FFmpegSession>) {});
+    return FFmpegKit::executeWithArgumentsAsync(jsArrayToStringList(arguments), [](std::shared_ptr<ffmpegkit::FFmpegSession>) {});
 }
 std::shared_ptr<FFprobeSession> ffprobeKit_executeWithArguments(const val arguments) {
     return FFprobeKit::executeWithArguments(jsArrayToStringList(arguments));
 }
 std::shared_ptr<FFprobeSession> ffprobeKit_executeAsync(const std::string command) {
-    return FFprobeKit::executeAsync(
-        command, [](std::shared_ptr<ffmpegkit::FFprobeSession>) {});
+    return FFprobeKit::executeAsync(command, [](std::shared_ptr<ffmpegkit::FFprobeSession>) {});
 }
 std::shared_ptr<FFprobeSession> ffprobeKit_executeWithArgumentsAsync(const val arguments) {
-    return FFprobeKit::executeWithArgumentsAsync(
-        jsArrayToStringList(arguments),
-        [](std::shared_ptr<ffmpegkit::FFprobeSession>) {});
+    return FFprobeKit::executeWithArgumentsAsync(jsArrayToStringList(arguments), [](std::shared_ptr<ffmpegkit::FFprobeSession>) {});
 }
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformationWithTimeout(const std::string path, const int waitTimeout) {
-    return FFprobeKit::getMediaInformation(path, waitTimeout);
-}
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformationFromCommand(const std::string command) {
-    return FFprobeKit::getMediaInformationFromCommand(command);
-}
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformationAsync(const std::string path) {
-    return FFprobeKit::getMediaInformationAsync(
-        path, [](std::shared_ptr<ffmpegkit::MediaInformationSession>) {});
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationWithTimeout(const std::string path, const int waitTimeout) { return FFprobeKit::getMediaInformation(path, waitTimeout); }
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationFromCommand(const std::string command) { return FFprobeKit::getMediaInformationFromCommand(command); }
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationAsync(const std::string path) {
+    return FFprobeKit::getMediaInformationAsync(path, [](std::shared_ptr<ffmpegkit::MediaInformationSession>) {});
 }
 
-// Arguments-based media information: FFprobeKit has no from-command-arguments entry
-// point, so compose it from the session factory + the FFmpegKitConfig execute primitive
-// (exactly how the Flutter/RN plugins build it). The async variant returns immediately;
-// the JS host polls the session to completion.
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformationFromCommandArguments(const val arguments,
-                                                   const int waitTimeout) {
-    auto session = MediaInformationSession::create(jsArrayToStringList(arguments));
-    FFmpegKitConfig::getMediaInformationExecute(session, waitTimeout);
-    return session;
-}
-std::shared_ptr<MediaInformationSession>
-ffprobeKit_getMediaInformationFromCommandArgumentsAsync(const val arguments,
-                                                        const int waitTimeout) {
-    auto session = MediaInformationSession::create(jsArrayToStringList(arguments));
-    FFmpegKitConfig::asyncGetMediaInformationExecute(session, waitTimeout);
-    return session;
-}
+// Custom-command media information uses the native FFprobeKit entry points.
+// Async wrappers return immediately; the JS host polls the session to
+// completion.
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationFromCommandAsync(const std::string command, const int waitTimeout) { return FFprobeKit::getMediaInformationFromCommandAsync(command, nullptr, nullptr, waitTimeout); }
+
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationFromCommandArguments(const val arguments, const int waitTimeout) { return FFprobeKit::getMediaInformationFromCommandArguments(jsArrayToStringList(arguments), waitTimeout); }
+std::shared_ptr<MediaInformationSession> ffprobeKit_getMediaInformationFromCommandArgumentsAsync(const val arguments, const int waitTimeout) { return FFprobeKit::getMediaInformationFromCommandArgumentsAsync(jsArrayToStringList(arguments), nullptr, nullptr, waitTimeout); }
 
 // ---- MediaInformation / StreamInformation accessors -------------------------
 // Bound as methods; convert the nullable shared_ptr<string>/<int64_t> results.
@@ -582,14 +523,15 @@ val mediaInformation_getAllProperties(MediaInformation &self) {
     return optJsonValue(self.getAllProperties());
 }
 
-std::shared_ptr<MediaInformation>
-mediaInformationJsonParser_from(const std::string ffprobeJsonOutput) {
-    return MediaInformationJsonParser::from(ffprobeJsonOutput);
-}
+std::shared_ptr<MediaInformation> mediaInformationJsonParser_from(const std::string ffprobeJsonOutput) { return MediaInformationJsonParser::from(ffprobeJsonOutput); }
 
-std::shared_ptr<MediaInformation>
-mediaInformationJsonParser_fromWithError(const std::string ffprobeJsonOutput) {
-    return MediaInformationJsonParser::fromWithError(ffprobeJsonOutput);
+val mediaInformationJsonParser_fromWithError(const std::string ffprobeJsonOutput) {
+    const val promise = val::global("Promise");
+    try {
+        return promise.call<val>("resolve", MediaInformationJsonParser::fromWithError(ffprobeJsonOutput));
+    } catch (const std::exception &exception) {
+        return promise.call<val>("reject", val::global("Error").new_(std::string(exception.what())));
+    }
 }
 
 val streamInformation_getIndex(StreamInformation &self) { return optInt64(self.getIndex()); }
@@ -675,56 +617,31 @@ val toUint8Array(const std::vector<uint8_t> &data) {
 // each is exposed through a fixed-arity free wrapper. timeoutMs: -1 blocks (only
 // legal off the main thread), 0 is non-blocking, > 0 is a timed wait.
 
-std::shared_ptr<FFmpegKitInputBuffer>
-inputBuffer_fromByteArray(const val &data, const std::string &extension) {
+std::shared_ptr<FFmpegKitInputBuffer> inputBuffer_fromByteArray(const val &data, const std::string &extension) {
     std::vector<uint8_t> bytes = toByteVector(data);
     return FFmpegKitInputBuffer::fromBytes(bytes.data(), bytes.size(), extension);
 }
 
-std::shared_ptr<FFmpegKitOutputBuffer>
-outputBuffer_create(const std::string &extension) {
-    return FFmpegKitOutputBuffer::create(extension);
-}
-std::shared_ptr<FFmpegKitOutputBuffer>
-outputBuffer_createWithCapacity(const std::string &extension,
-                                const long initialCapacity,
-                                const long maxCapacity) {
-    return FFmpegKitOutputBuffer::create(extension, initialCapacity, maxCapacity);
-}
+std::shared_ptr<FFmpegKitOutputBuffer> outputBuffer_create(const std::string &extension) { return FFmpegKitOutputBuffer::create(extension); }
+std::shared_ptr<FFmpegKitOutputBuffer> outputBuffer_createWithCapacity(const std::string &extension, const long initialCapacity, const long maxCapacity) { return FFmpegKitOutputBuffer::create(extension, initialCapacity, maxCapacity); }
 val outputBuffer_toByteArray(FFmpegKitOutputBuffer &self) {
     return toUint8Array(*self.toByteArray());
 }
 
-std::shared_ptr<FFmpegKitStreamInput>
-streamInput_create(const std::string &extension) {
-    return FFmpegKitStreamInput::create(extension);
-}
-std::shared_ptr<FFmpegKitStreamInput>
-streamInput_createWithCapacity(const std::string &extension,
-                               const long capacity) {
-    return FFmpegKitStreamInput::create(extension, capacity);
-}
+std::shared_ptr<FFmpegKitStreamInput> streamInput_create(const std::string &extension) { return FFmpegKitStreamInput::create(extension); }
+std::shared_ptr<FFmpegKitStreamInput> streamInput_createWithCapacity(const std::string &extension, const long capacity) { return FFmpegKitStreamInput::create(extension, capacity); }
 // Returns the number of bytes accepted into the ring (may be a short write when
 // timeoutMs elapses with the ring full).
-int streamInput_write(FFmpegKitStreamInput &self, const val &data,
-                      const int timeoutMs) {
+int streamInput_write(FFmpegKitStreamInput &self, const val &data, const int timeoutMs) {
     std::vector<uint8_t> bytes = toByteVector(data);
     return self.write(bytes.data(), bytes.size(), timeoutMs);
 }
 
-std::shared_ptr<FFmpegKitStreamOutput>
-streamOutput_create(const std::string &extension) {
-    return FFmpegKitStreamOutput::create(extension);
-}
-std::shared_ptr<FFmpegKitStreamOutput>
-streamOutput_createWithCapacity(const std::string &extension,
-                                const long capacity) {
-    return FFmpegKitStreamOutput::create(extension, capacity);
-}
+std::shared_ptr<FFmpegKitStreamOutput> streamOutput_create(const std::string &extension) { return FFmpegKitStreamOutput::create(extension); }
+std::shared_ptr<FFmpegKitStreamOutput> streamOutput_createWithCapacity(const std::string &extension, const long capacity) { return FFmpegKitStreamOutput::create(extension, capacity); }
 // Tri-state result: null == timed out (retry), empty Uint8Array == EOF/closed,
 // non-empty == data read.
-val streamOutput_read(FFmpegKitStreamOutput &self, const int maxBytes,
-                      const int timeoutMs) {
+val streamOutput_read(FFmpegKitStreamOutput &self, const int maxBytes, const int timeoutMs) {
     auto result = self.read(maxBytes, timeoutMs);
     if (result == nullptr) {
         return val::null();
@@ -757,10 +674,7 @@ class JsSessionDeleteListener : public SessionDeleteListener {
   public:
     explicit JsSessionDeleteListener(val callback) : _callback{callback} {}
 
-    void sessionDeleted(const long sessionId) override {
-        _callback.call<void>("call", val::undefined(),
-                             static_cast<double>(sessionId));
-    }
+    void sessionDeleted(const long sessionId) override { _callback.call<void>("call", val::undefined(), static_cast<double>(sessionId)); }
 
   private:
     val _callback;
@@ -798,11 +712,10 @@ void config_enableEventBuffering() {
         std::lock_guard<std::mutex> lock(g_eventMutex);
         g_logEvents.push_back(log);
     });
-    FFmpegKitConfig::enableStatisticsCallback(
-        [](const std::shared_ptr<Statistics> statistics) {
-            std::lock_guard<std::mutex> lock(g_eventMutex);
-            g_statisticsEvents.push_back(statistics);
-        });
+    FFmpegKitConfig::enableStatisticsCallback([](const std::shared_ptr<Statistics> statistics) {
+        std::lock_guard<std::mutex> lock(g_eventMutex);
+        g_statisticsEvents.push_back(statistics);
+    });
 }
 
 // Atomically swaps out the pending log batch and returns it as a JS array of Log
@@ -867,8 +780,7 @@ void config_setSessionDeletedCallback(val callback) {
         return;
     }
 
-    g_sessionDeleteListener =
-        std::make_shared<JsSessionDeleteListener>(callback);
+    g_sessionDeleteListener = std::make_shared<JsSessionDeleteListener>(callback);
     FFmpegKitConfig::addSessionDeleteListener(g_sessionDeleteListener);
 }
 
@@ -880,11 +792,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
     // All three are registered for inspection only. Nothing bound below accepts or
     // returns any of them - every enum crosses the boundary as a plain int (see the
     // enum note above).
-    enum_<SessionState>("SessionState")
-        .value("Created", SessionStateCreated)
-        .value("Running", SessionStateRunning)
-        .value("Failed", SessionStateFailed)
-        .value("Completed", SessionStateCompleted);
+    enum_<SessionState>("SessionState").value("Created", SessionStateCreated).value("Running", SessionStateRunning).value("Failed", SessionStateFailed).value("Completed", SessionStateCompleted);
 
     enum_<Level>("Level")
         .value("AVLogStdErr", LevelAVLogStdErr)
@@ -991,15 +899,12 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
         .function("getFormatProperties", &mediaInformation_getFormatProperties)
         .function("getAllProperties", &mediaInformation_getAllProperties);
 
-    class_<MediaInformationJsonParser>("MediaInformationJsonParser")
-        .class_function("from", &mediaInformationJsonParser_from)
-        .class_function("fromWithError", &mediaInformationJsonParser_fromWithError);
+    class_<MediaInformationJsonParser>("MediaInformationJsonParser").class_function("from", &mediaInformationJsonParser_from).class_function("fromWithError", &mediaInformationJsonParser_fromWithError);
 
     // ---- ffkitmem: / ffkitstream: I/O ---------------------------------------
     // Seekable in-memory input: FFmpegKitInputBuffer.fromByteArray(bytes, ext).
     class_<FFmpegKitInputBuffer>("FFmpegKitInputBuffer")
-        .smart_ptr<std::shared_ptr<FFmpegKitInputBuffer>>(
-            "shared_ptr<FFmpegKitInputBuffer>")
+        .smart_ptr<std::shared_ptr<FFmpegKitInputBuffer>>("shared_ptr<FFmpegKitInputBuffer>")
         .class_function("fromByteArray", &inputBuffer_fromByteArray)
         .function("getUrl", &FFmpegKitInputBuffer::getUrl)
         .function("getSize", &FFmpegKitInputBuffer::getSize)
@@ -1007,8 +912,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
 
     // Seekable in-memory output: read back with toByteArray() after the command.
     class_<FFmpegKitOutputBuffer>("FFmpegKitOutputBuffer")
-        .smart_ptr<std::shared_ptr<FFmpegKitOutputBuffer>>(
-            "shared_ptr<FFmpegKitOutputBuffer>")
+        .smart_ptr<std::shared_ptr<FFmpegKitOutputBuffer>>("shared_ptr<FFmpegKitOutputBuffer>")
         .class_function("create", &outputBuffer_create)
         .class_function("createWithCapacity", &outputBuffer_createWithCapacity)
         .function("getUrl", &FFmpegKitOutputBuffer::getUrl)
@@ -1019,8 +923,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
     // Non-seekable streaming input: pump write() from the host worker while
     // FFmpeg drains the ring on its own pthread; closeInput() signals EOF.
     class_<FFmpegKitStreamInput>("FFmpegKitStreamInput")
-        .smart_ptr<std::shared_ptr<FFmpegKitStreamInput>>(
-            "shared_ptr<FFmpegKitStreamInput>")
+        .smart_ptr<std::shared_ptr<FFmpegKitStreamInput>>("shared_ptr<FFmpegKitStreamInput>")
         .class_function("create", &streamInput_create)
         .class_function("createWithCapacity", &streamInput_createWithCapacity)
         .function("getUrl", &FFmpegKitStreamInput::getUrl)
@@ -1031,8 +934,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
     // Non-seekable streaming output: pump read() from the host worker while
     // FFmpeg fills the ring on its own pthread.
     class_<FFmpegKitStreamOutput>("FFmpegKitStreamOutput")
-        .smart_ptr<std::shared_ptr<FFmpegKitStreamOutput>>(
-            "shared_ptr<FFmpegKitStreamOutput>")
+        .smart_ptr<std::shared_ptr<FFmpegKitStreamOutput>>("shared_ptr<FFmpegKitStreamOutput>")
         .class_function("create", &streamOutput_create)
         .class_function("createWithCapacity", &streamOutput_createWithCapacity)
         .function("getUrl", &FFmpegKitStreamOutput::getUrl)
@@ -1069,9 +971,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
         .function("getStatistics", &ffmpegSession_getStatistics)
         .function("getLastReceivedStatistics", &FFmpegSession::getLastReceivedStatistics);
 
-    class_<FFprobeSession, base<AbstractSession>>("FFprobeSession")
-        .smart_ptr<std::shared_ptr<FFprobeSession>>("shared_ptr<FFprobeSession>")
-        .class_function("create", &ffprobeSession_create);
+    class_<FFprobeSession, base<AbstractSession>>("FFprobeSession").smart_ptr<std::shared_ptr<FFprobeSession>>("shared_ptr<FFprobeSession>").class_function("create", &ffprobeSession_create);
 
     class_<MediaInformationSession, base<AbstractSession>>("MediaInformationSession")
         .smart_ptr<std::shared_ptr<MediaInformationSession>>("shared_ptr<MediaInformationSession>")
@@ -1096,59 +996,48 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
         .class_function("getMediaInformation", &ffprobeKit_getMediaInformation)
         .class_function("getMediaInformationWithTimeout", &ffprobeKit_getMediaInformationWithTimeout)
         .class_function("getMediaInformationFromCommand", &ffprobeKit_getMediaInformationFromCommand)
+        .class_function("getMediaInformationFromCommandAsync", &ffprobeKit_getMediaInformationFromCommandAsync)
         .class_function("getMediaInformationAsync", &ffprobeKit_getMediaInformationAsync)
         .class_function("getMediaInformationFromCommandArguments", &ffprobeKit_getMediaInformationFromCommandArguments)
         .class_function("getMediaInformationFromCommandArgumentsAsync", &ffprobeKit_getMediaInformationFromCommandArgumentsAsync);
 
-    class_<ArchDetect>("ArchDetect")
-        .class_function("getArch", &ArchDetect::getArch);
+    class_<ArchDetect>("ArchDetect").class_function("getArch", &ArchDetect::getArch);
 
-    class_<Packages>("Packages")
-        .class_function("getPackageName", &packages_getPackageName)
-        .class_function("getExternalLibraries", &packages_getExternalLibraries);
+    class_<Packages>("Packages").class_function("getPackageName", &packages_getPackageName).class_function("getExternalLibraries", &packages_getExternalLibraries);
 
     // Public FFmpegKitConfig surface — mirrors the native API only (no web-only
     // methods here, to keep the JS API identical to the other platforms).
     class_<FFmpegKitConfig>("FFmpegKitConfig")
         .class_function("enableRedirection", &FFmpegKitConfig::enableRedirection)
         .class_function("disableRedirection", &FFmpegKitConfig::disableRedirection)
+        // Runtime-thread calls return immediately; see the shutdown note above.
+        .class_function("shutdown", &config_shutdown)
+        .class_function("isShutdown", &config_isShutdown)
         // Plain int in / plain int out, not ffmpegkit::Level - see the log-level
         // note above.
         .class_function("setLogLevel", &config_setLogLevel)
-        .class_function("setEnvironmentVariable",
-                        &FFmpegKitConfig::setEnvironmentVariable)
-        .class_function("setFontconfigConfigurationPath",
-                        &FFmpegKitConfig::setFontconfigConfigurationPath)
+        .class_function("setEnvironmentVariable", &FFmpegKitConfig::setEnvironmentVariable)
+        .class_function("setFontconfigConfigurationPath", &FFmpegKitConfig::setFontconfigConfigurationPath)
         .class_function("setFontDirectoryList", &config_setFontDirectoryList)
         // Async execute only - see the execute note above.
-        .class_function("asyncFFmpegExecuteSession",
-                        &config_asyncFFmpegExecuteSession)
-        .class_function("asyncFFprobeExecuteSession",
-                        &config_asyncFFprobeExecuteSession)
-        .class_function("asyncGetMediaInformationExecuteSession",
-                        &config_asyncGetMediaInformationExecuteSession)
+        .class_function("asyncFFmpegExecuteSession", &config_asyncFFmpegExecuteSession)
+        .class_function("asyncFFprobeExecuteSession", &config_asyncFFprobeExecuteSession)
+        .class_function("asyncGetMediaInformationExecuteSession", &config_asyncGetMediaInformationExecuteSession)
         .class_function("getFFmpegSession", &config_getFFmpegSession)
         .class_function("getFFprobeSession", &config_getFFprobeSession)
-        .class_function("getMediaInformationSession",
-                        &config_getMediaInformationSession)
-        .class_function("getSessionHistorySize",
-                        &FFmpegKitConfig::getSessionHistorySize)
+        .class_function("getMediaInformationSession", &config_getMediaInformationSession)
+        .class_function("getSessionHistorySize", &FFmpegKitConfig::getSessionHistorySize)
         .class_function("getSessionIds", &config_getSessionIds)
         .class_function("getLastSessionId", &config_getLastSessionId)
-        .class_function("getLastCompletedSessionId",
-                        &config_getLastCompletedSessionId)
-        .class_function("getSessionsByStateIds",
-                        &config_getSessionsByStateIds)
+        .class_function("getLastCompletedSessionId", &config_getLastCompletedSessionId)
+        .class_function("getSessionsByStateIds", &config_getSessionsByStateIds)
         .class_function("getFFmpegSessionIds", &config_getFFmpegSessionIds)
         .class_function("getFFprobeSessionIds", &config_getFFprobeSessionIds)
-        .class_function("getMediaInformationSessionIds",
-                        &config_getMediaInformationSessionIds)
-        .class_function("setSessionHistorySize",
-                        &FFmpegKitConfig::setSessionHistorySize)
+        .class_function("getMediaInformationSessionIds", &config_getMediaInformationSessionIds)
+        .class_function("setSessionHistorySize", &FFmpegKitConfig::setSessionHistorySize)
         .class_function("clearSessions", &FFmpegKitConfig::clearSessions)
         .class_function("deleteSession", &FFmpegKitConfig::deleteSession)
-        .class_function("messagesInTransmit",
-                        &FFmpegKitConfig::messagesInTransmit)
+        .class_function("messagesInTransmit", &FFmpegKitConfig::messagesInTransmit)
         .class_function("getLogLevel", &config_getLogLevel)
         .class_function("getVersion", &FFmpegKitConfig::getVersion)
         .class_function("getFFmpegVersion", &FFmpegKitConfig::getFFmpegVersion)
@@ -1164,8 +1053,7 @@ EMSCRIPTEN_BINDINGS(ffmpegkit_bindings) {
     function("_ffmpegkitDrainLogEvents", &config_drainLogEvents);
     function("_ffmpegkitDrainStatisticsEvents", &config_drainStatisticsEvents);
     function("_ffmpegkitPendingEventCount", &config_pendingEventCount);
-    function("_ffmpegkitSetSessionDeletedCallback",
-             &config_setSessionDeletedCallback);
+    function("_ffmpegkitSetSessionDeletedCallback", &config_setSessionDeletedCallback);
 }
 
 /*

@@ -41,6 +41,10 @@ namespace ffmpegkit {
  * file1.mp4 -c:v libxvid file1.avi, [](auto session){ ... }, [](auto log){ ...
  * }, [](auto statistics){ ... });
  * </pre>
+ * <p>After FFmpegKitConfig::shutdown every execute method fails the session
+ * without native execution or completion callbacks. Previously submitted workers
+ * that have not claimed their session fail on their original threads; completion
+ * callbacks may run during shutdown grace and are dropped afterwards.
  */
 class FFmpegKit {
   public:
@@ -50,8 +54,7 @@ class FFmpegKit {
      * @param arguments FFmpeg command options/arguments as string list
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArguments(const std::list<std::string> &arguments);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArguments(const std::list<std::string> &arguments);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution with arguments provided.
@@ -65,9 +68,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution with arguments provided.
@@ -84,11 +85,7 @@ class FFmpegKit {
      * @param statisticsCallback  callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback,
-                              ffmpegkit::LogCallback logCallback,
-                              ffmpegkit::StatisticsCallback statisticsCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback);
 
     /**
      * <p>Synchronously executes FFmpeg command provided. Space character is
@@ -98,8 +95,7 @@ class FFmpegKit {
      * @param command FFmpeg command
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    execute(const std::string command);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> execute(const std::string command);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given command. Space
@@ -115,9 +111,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given command. Space
@@ -135,11 +129,7 @@ class FFmpegKit {
      * @param statisticsCallback  callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback,
-                 ffmpegkit::LogCallback logCallback,
-                 ffmpegkit::StatisticsCallback statisticsCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback);
 
     /**
      * <p>Cancels all running sessions.
@@ -164,8 +154,7 @@ class FFmpegKit {
      *
      * @return all FFmpeg sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>>
-    listSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>> listSessions();
 };
 
 } // namespace ffmpegkit

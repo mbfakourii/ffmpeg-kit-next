@@ -46,6 +46,15 @@
  * getMediaInformation method. <pre> MediaInformationSession *session =
  * [FFprobeKit getMediaInformation:@"file1.mp4"];
  * </pre>
+ * <p>FFprobe execution completes and its complete callbacks run without waiting
+ * for pending log delivery. Use the session's getOutput or getAllLogs methods
+ * to wait for that delivery, subject to their timeouts.
+ * <p>After FFmpegKitConfig shutdownWithTimeout: new executions fail without
+ * running or invoking completion callbacks. Async sessions still queued when
+ * shutdown begins remain on their dispatch queues and fail when their blocks
+ * run. Their completion callbacks may run on those queues during shutdown's
+ * grace period; callbacks are dropped after that period. Running sessions may
+ * also lose their completion callbacks and pending output during shutdown.
  */
 @interface FFprobeKit : NSObject
 
@@ -69,9 +78,7 @@
  * completed
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments
-                         withCompleteCallback:
-                             (FFprobeSessionCompleteCallback)completeCallback;
++ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback;
 
 /**
  * <p>Starts an asynchronous FFprobe execution with arguments provided.
@@ -86,10 +93,7 @@
  * @param logCallback      callback that will receive logs
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments
-                         withCompleteCallback:
-                             (FFprobeSessionCompleteCallback)completeCallback
-                              withLogCallback:(LogCallback)logCallback;
++ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback;
 
 /**
  * <p>Starts an asynchronous FFprobe execution with arguments provided.
@@ -105,10 +109,7 @@
  * asynchronous operation
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments
-                         withCompleteCallback:
-                             (FFprobeSessionCompleteCallback)completeCallback
-                              onDispatchQueue:(dispatch_queue_t)queue;
++ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Starts an asynchronous FFprobe execution with arguments provided.
@@ -125,11 +126,7 @@
  * asynchronous operation
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments
-                         withCompleteCallback:
-                             (FFprobeSessionCompleteCallback)completeCallback
-                              withLogCallback:(LogCallback)logCallback
-                              onDispatchQueue:(dispatch_queue_t)queue;
++ (FFprobeSession *)executeWithArgumentsAsync:(NSArray *)arguments withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Synchronously executes FFprobe command provided. Space character is used
@@ -155,9 +152,7 @@
  * completed
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeAsync:(NSString *)command
-            withCompleteCallback:
-                (FFprobeSessionCompleteCallback)completeCallback;
++ (FFprobeSession *)executeAsync:(NSString *)command withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given command. Space
@@ -174,10 +169,7 @@
  * @param logCallback      callback that will receive logs
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeAsync:(NSString *)command
-            withCompleteCallback:
-                (FFprobeSessionCompleteCallback)completeCallback
-                 withLogCallback:(LogCallback)logCallback;
++ (FFprobeSession *)executeAsync:(NSString *)command withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given command. Space
@@ -195,10 +187,7 @@
  * asynchronous operation
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeAsync:(NSString *)command
-            withCompleteCallback:
-                (FFprobeSessionCompleteCallback)completeCallback
-                 onDispatchQueue:(dispatch_queue_t)queue;
++ (FFprobeSession *)executeAsync:(NSString *)command withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Starts an asynchronous FFprobe execution for the given command. Space
@@ -217,11 +206,7 @@
  * asynchronous operation
  * @return FFprobe session created for this execution
  */
-+ (FFprobeSession *)executeAsync:(NSString *)command
-            withCompleteCallback:
-                (FFprobeSessionCompleteCallback)completeCallback
-                 withLogCallback:(LogCallback)logCallback
-                 onDispatchQueue:(dispatch_queue_t)queue;
++ (FFprobeSession *)executeAsync:(NSString *)command withCompleteCallback:(FFprobeSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Extracts media information for the file specified with path.
@@ -238,8 +223,7 @@
  * @param waitTimeout max time to wait until media information is transmitted
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)getMediaInformation:(NSString *)path
-                                     withTimeout:(int)waitTimeout;
++ (MediaInformationSession *)getMediaInformation:(NSString *)path withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract the media information
@@ -254,10 +238,7 @@
  * completed
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path
-                                 withCompleteCallback:
-                                     (MediaInformationSessionCompleteCallback)
-                                         completeCallback;
++ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract the media information
@@ -275,12 +256,7 @@
  * transmitted
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path
-                                 withCompleteCallback:
-                                     (MediaInformationSessionCompleteCallback)
-                                         completeCallback
-                                      withLogCallback:(LogCallback)logCallback
-                                          withTimeout:(int)waitTimeout;
++ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract the media information
@@ -297,11 +273,7 @@
  * asynchronous operation
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path
-                                 withCompleteCallback:
-                                     (MediaInformationSessionCompleteCallback)
-                                         completeCallback
-                                      onDispatchQueue:(dispatch_queue_t)queue;
++ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback onDispatchQueue:(dispatch_queue_t)queue;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract the media information
@@ -321,22 +293,37 @@
  * transmitted
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path
-                                 withCompleteCallback:
-                                     (MediaInformationSessionCompleteCallback)
-                                         completeCallback
-                                      withLogCallback:(LogCallback)logCallback
-                                      onDispatchQueue:(dispatch_queue_t)queue
-                                          withTimeout:(int)waitTimeout;
++ (MediaInformationSession *)getMediaInformationAsync:(NSString *)path withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback onDispatchQueue:(dispatch_queue_t)queue withTimeout:(int)waitTimeout;
 
 /**
- * <p>Extracts media information using the command provided asynchronously.
+ * <p>Synchronously extracts media information using the command provided.
  *
  * @param command FFprobe command that prints media information for a file in
  * JSON format
  * @return media information session created for this execution
  */
 + (MediaInformationSession *)getMediaInformationFromCommand:(NSString *)command;
+
+/**
+ * <p>Synchronously extracts media information using command arguments that
+ * generate JSON output. Arguments are passed directly without command parsing.
+ *
+ * @param arguments FFprobe command arguments that print media information in
+ * JSON format
+ * @return media information session created for this execution
+ */
++ (MediaInformationSession *)getMediaInformationFromCommandArguments:(NSArray *)arguments;
+
+/**
+ * <p>Synchronously extracts media information using command arguments that
+ * generate JSON output. Arguments are passed directly without command parsing.
+ *
+ * @param arguments FFprobe command arguments that print media information in
+ * JSON format
+ * @param waitTimeout max time to wait until media information is transmitted
+ * @return media information session created for this execution
+ */
++ (MediaInformationSession *)getMediaInformationFromCommandArguments:(NSArray *)arguments withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract media information
@@ -358,13 +345,7 @@
  * transmitted
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)
-    getMediaInformationFromCommandAsync:(NSString *)command
-                   withCompleteCallback:
-                       (MediaInformationSessionCompleteCallback)completeCallback
-                        withLogCallback:(LogCallback)logCallback
-                        onDispatchQueue:(dispatch_queue_t)queue
-                            withTimeout:(int)waitTimeout;
++ (MediaInformationSession *)getMediaInformationFromCommandAsync:(NSString *)command withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback onDispatchQueue:(dispatch_queue_t)queue withTimeout:(int)waitTimeout;
 
 /**
  * <p>Starts an asynchronous FFprobe execution to extract media information
@@ -387,14 +368,7 @@
  * transmitted
  * @return media information session created for this execution
  */
-+ (MediaInformationSession *)
-    getMediaInformationFromCommandArgumentsAsync:(NSArray *)arguments
-                            withCompleteCallback:
-                                (MediaInformationSessionCompleteCallback)
-                                    completeCallback
-                                 withLogCallback:(LogCallback)logCallback
-                                 onDispatchQueue:(dispatch_queue_t)queue
-                                     withTimeout:(int)waitTimeout;
++ (MediaInformationSession *)getMediaInformationFromCommandArgumentsAsync:(NSArray *)arguments withCompleteCallback:(MediaInformationSessionCompleteCallback)completeCallback withLogCallback:(LogCallback)logCallback onDispatchQueue:(dispatch_queue_t)queue withTimeout:(int)waitTimeout;
 
 /**
  * <p>Lists all FFprobe sessions in the session history.

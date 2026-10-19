@@ -20,6 +20,7 @@
 #ifndef FFMPEG_KIT_INTERNAL_FFMPEG_KIT_STREAM_INPUT_H
 #define FFMPEG_KIT_INTERNAL_FFMPEG_KIT_STREAM_INPUT_H
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -35,11 +36,9 @@ namespace internal {
  */
 class FFmpegKitStreamInput {
   public:
-    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamInput>
-    create(const std::string &extension);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamInput> create(const std::string &extension);
 
-    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamInput>
-    create(const std::string &extension, const long capacity);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamInput> create(const std::string &extension, const long capacity);
 
     ~FFmpegKitStreamInput();
 
@@ -49,8 +48,7 @@ class FFmpegKitStreamInput {
 
     int write(const std::vector<uint8_t> &data, const int timeoutMs);
 
-    int write(const std::vector<uint8_t> &data, const size_t offset,
-              const size_t length, const int timeoutMs);
+    int write(const std::vector<uint8_t> &data, const size_t offset, const size_t length, const int timeoutMs);
 
     int write(const uint8_t *data, const size_t length, const int timeoutMs);
 
@@ -65,8 +63,10 @@ class FFmpegKitStreamInput {
 
     long _id;
     std::string _url;
-    bool _closed;
-    bool _inputClosed;
+    // Do not lock across I/O: native close must be able to wake blocked writes.
+    // Operations past these checks are synchronized by the native registry.
+    std::atomic<bool> _closed;
+    std::atomic<bool> _inputClosed;
 };
 
 } // namespace internal

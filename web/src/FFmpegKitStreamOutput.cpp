@@ -25,56 +25,39 @@
 static const long DefaultStreamCapacity = 1024 * 1024;
 static const int StreamTypeOutput = 2;
 
-std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput>
-ffmpegkit::FFmpegKitStreamOutput::create(const std::string &extension) {
-    return ffmpegkit::FFmpegKitStreamOutput::create(extension,
-                                                    DefaultStreamCapacity);
-}
+std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput> ffmpegkit::FFmpegKitStreamOutput::create(const std::string &extension) { return ffmpegkit::FFmpegKitStreamOutput::create(extension, DefaultStreamCapacity); }
 
-std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput>
-ffmpegkit::FFmpegKitStreamOutput::create(const std::string &extension,
-                                         const long capacity) {
+std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput> ffmpegkit::FFmpegKitStreamOutput::create(const std::string &extension, const long capacity) {
     if (capacity <= 0) {
         throw std::invalid_argument("capacity must be positive");
     }
 
-    long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitStream(
-        capacity, StreamTypeOutput);
+    long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitStream(capacity, StreamTypeOutput);
     if (id == 0) {
         throw std::runtime_error("Failed to register FFmpegKit output stream.");
     }
 
-    return std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput>(
-        new ffmpegkit::FFmpegKitStreamOutput(id, extension));
+    return std::shared_ptr<ffmpegkit::FFmpegKitStreamOutput>(new ffmpegkit::FFmpegKitStreamOutput(id, extension));
 }
 
 ffmpegkit::FFmpegKitStreamOutput::~FFmpegKitStreamOutput() { close(); }
 
-ffmpegkit::FFmpegKitStreamOutput::FFmpegKitStreamOutput(
-    const long id, const std::string &extension)
-    : _id{id}, _url{ffmpegkit::buildFFmpegKitUrl("ffkitstream", id, extension)},
-      _closed{false} {}
+ffmpegkit::FFmpegKitStreamOutput::FFmpegKitStreamOutput(const long id, const std::string &extension) : _id{id}, _url{ffmpegkit::buildFFmpegKitUrl("ffkitstream", id, extension)}, _closed{false} {}
 
 std::string ffmpegkit::FFmpegKitStreamOutput::getUrl() {
     ensureOpen();
     return _url;
 }
 
-std::shared_ptr<std::vector<uint8_t>>
-ffmpegkit::FFmpegKitStreamOutput::read(const int maxBytes) {
-    return read(maxBytes, -1);
-}
+std::shared_ptr<std::vector<uint8_t>> ffmpegkit::FFmpegKitStreamOutput::read(const int maxBytes) { return read(maxBytes, -1); }
 
-std::shared_ptr<std::vector<uint8_t>>
-ffmpegkit::FFmpegKitStreamOutput::read(const int maxBytes,
-                                       const int timeoutMs) {
+std::shared_ptr<std::vector<uint8_t>> ffmpegkit::FFmpegKitStreamOutput::read(const int maxBytes, const int timeoutMs) {
     ensureOpen();
     if (maxBytes < 0) {
         throw std::invalid_argument("maxBytes must not be negative");
     }
 
-    return ffmpegkit::FFmpegKitConfig::readFFmpegKitStream(_id, maxBytes,
-                                                           timeoutMs);
+    return ffmpegkit::FFmpegKitConfig::readFFmpegKitStream(_id, maxBytes, timeoutMs);
 }
 
 void ffmpegkit::FFmpegKitStreamOutput::close() {

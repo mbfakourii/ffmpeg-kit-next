@@ -1,3 +1,7 @@
+## 0.3.1
+- `ffmpegKitFlutterInitializerPrintLoadConfirmation` takes the plugin version to print
+- Fixed `abstractSessionThereAreAsynchronousMessagesInTransmit` method mapping
+
 ## 0.3.0
 - ffkit protocol data types and methods added
 

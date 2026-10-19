@@ -53,9 +53,7 @@ class ReturnCode {
 
     bool isValueCancel() const { return (_value == Cancel); }
 
-    friend std::ostream &
-    operator<<(std::ostream &out,
-               const std::shared_ptr<ffmpegkit::ReturnCode> &o) {
+    friend std::ostream &operator<<(std::ostream &out, const std::shared_ptr<ffmpegkit::ReturnCode> &o) {
         if (o == nullptr) {
             return out;
         } else {

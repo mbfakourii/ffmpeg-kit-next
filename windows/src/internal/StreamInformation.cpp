@@ -19,10 +19,7 @@
 
 #include "StreamInformation.h"
 
-
-ffmpegkit::internal::StreamInformation::StreamInformation(
-    std::shared_ptr<ffmpegkit::json::Value> streamInformationValue)
-    : _streamInformationValue{streamInformationValue} {}
+ffmpegkit::internal::StreamInformation::StreamInformation(std::shared_ptr<ffmpegkit::json::Value> streamInformationValue) : _streamInformationValue{streamInformationValue} {}
 
 std::shared_ptr<int64_t> ffmpegkit::internal::StreamInformation::getIndex() {
     return getNumberProperty(KeyIndex);
@@ -68,20 +65,11 @@ std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getChannelL
     return getStringProperty(KeyChannelLayout);
 }
 
-std::shared_ptr<std::string>
-ffmpegkit::internal::StreamInformation::getSampleAspectRatio() {
-    return getStringProperty(KeySampleAspectRatio);
-}
+std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getSampleAspectRatio() { return getStringProperty(KeySampleAspectRatio); }
 
-std::shared_ptr<std::string>
-ffmpegkit::internal::StreamInformation::getDisplayAspectRatio() {
-    return getStringProperty(KeyDisplayAspectRatio);
-}
+std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getDisplayAspectRatio() { return getStringProperty(KeyDisplayAspectRatio); }
 
-std::shared_ptr<std::string>
-ffmpegkit::internal::StreamInformation::getAverageFrameRate() {
-    return getStringProperty(KeyAverageFrameRate);
-}
+std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getAverageFrameRate() { return getStringProperty(KeyAverageFrameRate); }
 
 std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getRealFrameRate() {
     return getStringProperty(KeyRealFrameRate);
@@ -99,8 +87,7 @@ std::shared_ptr<ffmpegkit::json::Value> ffmpegkit::internal::StreamInformation::
     return getProperty(KeyTags);
 }
 
-std::shared_ptr<std::string>
-ffmpegkit::internal::StreamInformation::getStringProperty(const char *key) {
+std::shared_ptr<std::string> ffmpegkit::internal::StreamInformation::getStringProperty(const char *key) {
     if (_streamInformationValue == nullptr) {
         return nullptr;
     }
@@ -111,8 +98,7 @@ ffmpegkit::internal::StreamInformation::getStringProperty(const char *key) {
     return property->getString();
 }
 
-std::shared_ptr<int64_t>
-ffmpegkit::internal::StreamInformation::getNumberProperty(const char *key) {
+std::shared_ptr<int64_t> ffmpegkit::internal::StreamInformation::getNumberProperty(const char *key) {
     if (_streamInformationValue == nullptr) {
         return nullptr;
     }
@@ -123,8 +109,7 @@ ffmpegkit::internal::StreamInformation::getNumberProperty(const char *key) {
     return property->getInt();
 }
 
-std::shared_ptr<ffmpegkit::json::Value>
-ffmpegkit::internal::StreamInformation::getProperty(const char *key) {
+std::shared_ptr<ffmpegkit::json::Value> ffmpegkit::internal::StreamInformation::getProperty(const char *key) {
     if (_streamInformationValue == nullptr) {
         return nullptr;
     }
@@ -135,8 +120,7 @@ ffmpegkit::internal::StreamInformation::getProperty(const char *key) {
     return std::make_shared<ffmpegkit::json::Value>(*property);
 }
 
-std::shared_ptr<ffmpegkit::json::Value>
-ffmpegkit::internal::StreamInformation::getAllProperties() {
+std::shared_ptr<ffmpegkit::json::Value> ffmpegkit::internal::StreamInformation::getAllProperties() {
     if (_streamInformationValue == nullptr) {
         return nullptr;
     }
