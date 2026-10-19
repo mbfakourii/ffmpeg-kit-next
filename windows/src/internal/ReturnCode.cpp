@@ -19,15 +19,9 @@
 
 #include "ReturnCode.h"
 
-bool ffmpegkit::internal::ReturnCode::isSuccess(
-    const std::shared_ptr<ffmpegkit::internal::ReturnCode> value) {
-    return (value != nullptr) && (value->getValue() == Success);
-}
+bool ffmpegkit::internal::ReturnCode::isSuccess(const std::shared_ptr<ffmpegkit::internal::ReturnCode> value) { return (value != nullptr) && (value->getValue() == Success); }
 
-bool ffmpegkit::internal::ReturnCode::isCancel(
-    const std::shared_ptr<ffmpegkit::internal::ReturnCode> value) {
-    return (value != nullptr) && (value->getValue() == Cancel);
-}
+bool ffmpegkit::internal::ReturnCode::isCancel(const std::shared_ptr<ffmpegkit::internal::ReturnCode> value) { return (value != nullptr) && (value->getValue() == Cancel); }
 
 ffmpegkit::internal::ReturnCode::ReturnCode(const int value) : _value{value} {}
 
@@ -46,8 +40,7 @@ bool ffmpegkit::internal::ReturnCode::isValueCancel() const { return (_value == 
 namespace ffmpegkit {
 namespace internal {
 
-std::ostream &operator<<(std::ostream &out,
-                         const std::shared_ptr<ffmpegkit::internal::ReturnCode> &o) {
+std::ostream &operator<<(std::ostream &out, const std::shared_ptr<ffmpegkit::internal::ReturnCode> &o) {
     if (o == nullptr) {
         return out;
     } else {

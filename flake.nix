@@ -119,6 +119,11 @@
       linuxPkgConfigShellHook = pkgs: ''
         ${toolchainShellHook pkgs}
 
+        unset NIX_CFLAGS_COMPILE
+        unset NIX_CFLAGS_COMPILE_FOR_BUILD
+        unset NIX_LDFLAGS
+        unset NIX_LDFLAGS_FOR_BUILD
+
         export FFMPEG_KIT_SYSTEM_PKG_CONFIG_LIBDIR="${linuxSystemPkgConfigLibdir pkgs}"
         unset FFMPEG_KIT_NIX_PKG_CONFIG_LIBDIR
         unset PKG_CONFIG_LIBDIR

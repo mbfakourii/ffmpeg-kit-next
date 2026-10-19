@@ -31,7 +31,6 @@ libffmpegkit_la_SOURCES = \
     Statistics.cpp \
     StreamInformation.cpp \
     ffmpeg_context.c \
-    ffmpegkit_exception.cpp \
     fftools/cmdutils.c \
     fftools/ffmpeg.c \
     fftools/ffmpeg_dec.c \
@@ -99,7 +98,6 @@ include_HEADERS = \
     StatisticsCallback.h \
     StreamInformation.h \
     ffmpeg_context.h \
-    ffmpegkit_exception.h \
     fftools/cmdutils.h \
     fftools/ffmpeg.h \
     fftools/ffmpeg_mux.h \
@@ -119,4 +117,8 @@ include_HEADERS = \
 libffmpegkit_la_CFLAGS = $(CFLAGS)
 libffmpegkit_la_OBJCFLAGS = $(CFLAGS)
 libffmpegkit_la_CXXFLAGS = $(CXXFLAGS)
-libffmpegkit_la_LDFLAGS = -version-info @VERSION_INFO@ -sSIDE_MODULE=1
+# libtool's Emscripten rule links with -sSIDE_MODULE=2 and drops a plain -sSIDE_MODULE=1 from LDFLAGS.
+# Level 2 allows dead-code elimination and requires explicit exports to preserve the public C++ API
+# (FFmpegKit, FFprobeKit, FFmpegKitConfig). -Xcompiler passes the flag to the compiler driver after
+# libtool's flag, so level 1 (retain and export all symbols) wins.
+libffmpegkit_la_LDFLAGS = -version-info @VERSION_INFO@ -Xcompiler -sSIDE_MODULE=1

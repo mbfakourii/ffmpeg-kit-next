@@ -29,9 +29,8 @@
 extern int const AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit;
 
 /**
- * Abstract session implementation which includes common features shared by
- * <code>FFmpeg</code>, <code>FFprobe</code> and <code>MediaInformation</code>
- * sessions.
+ * Abstract session implementation which includes common features shared by <code>FFmpeg</code>, <code>FFprobe</code>
+ * and <code>MediaInformation</code> sessions.
  */
 @interface AbstractSession : NSObject <Session>
 
@@ -42,13 +41,10 @@ extern int const AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit;
  * @param logCallback            session specific log callback
  * @param logRedirectionStrategy session specific log redirection strategy
  */
-- (instancetype)init:(NSArray *)arguments
-               withLogCallback:(LogCallback)logCallback
-    withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy;
+- (instancetype)init:(NSArray *)arguments withLogCallback:(LogCallback)logCallback withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy;
 
 /**
- * Waits for all asynchronous messages to be transmitted until the given
- * timeout.
+ * Waits for all asynchronous messages to be transmitted until the given timeout.
  *
  * @param timeout wait timeout in milliseconds
  */

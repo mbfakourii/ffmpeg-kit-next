@@ -30,9 +30,7 @@
 
 + (instancetype)create:(NSString *)extension;
 
-+ (instancetype)create:(NSString *)extension
-       initialCapacity:(long)initialCapacity
-           maxCapacity:(long)maxCapacity;
++ (instancetype)create:(NSString *)extension initialCapacity:(long)initialCapacity maxCapacity:(long)maxCapacity;
 
 - (NSString *)getUrl;
 

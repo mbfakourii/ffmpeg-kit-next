@@ -19,15 +19,8 @@
 
 #include "Statistics.h"
 
-ffmpegkit::internal::Statistics::Statistics(const long sessionId,
-                                  const int videoFrameNumber,
-                                  const float videoFps,
-                                  const float videoQuality, const int64_t size,
-                                  const double time, const double bitrate,
-                                  const double speed)
-    : _sessionId{sessionId}, _videoFrameNumber{videoFrameNumber},
-      _videoFps{videoFps}, _videoQuality{videoQuality}, _size{size},
-      _time{time}, _bitrate{bitrate}, _speed{speed} {}
+ffmpegkit::internal::Statistics::Statistics(const long sessionId, const int videoFrameNumber, const float videoFps, const float videoQuality, const int64_t size, const double time, const double bitrate, const double speed)
+    : _sessionId{sessionId}, _videoFrameNumber{videoFrameNumber}, _videoFps{videoFps}, _videoQuality{videoQuality}, _size{size}, _time{time}, _bitrate{bitrate}, _speed{speed} {}
 
 long ffmpegkit::internal::Statistics::getSessionId() { return _sessionId; }
 

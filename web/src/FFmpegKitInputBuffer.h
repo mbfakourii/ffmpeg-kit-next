@@ -34,13 +34,9 @@ namespace ffmpegkit {
  */
 class FFmpegKitInputBuffer {
   public:
-    static std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>
-    fromByteArray(const std::vector<uint8_t> &data,
-                  const std::string &extension);
+    static std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer> fromByteArray(const std::vector<uint8_t> &data, const std::string &extension);
 
-    static std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>
-    fromBytes(const uint8_t *data, const size_t size,
-              const std::string &extension);
+    static std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer> fromBytes(const uint8_t *data, const size_t size, const std::string &extension);
 
     ~FFmpegKitInputBuffer();
 

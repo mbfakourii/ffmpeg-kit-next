@@ -27,21 +27,11 @@
 namespace ffmpegkit {
 namespace internal {
 
-static inline std::string normalizeFFmpegKitExtension(
-    const std::string &extension) {
+static inline std::string normalizeFFmpegKitExtension(const std::string &extension) {
     std::string normalized = extension;
-    normalized.erase(normalized.begin(),
-                     std::find_if(normalized.begin(), normalized.end(),
-                                  [](unsigned char c) {
-                                      return !std::isspace(c);
-                                  }));
-    normalized.erase(std::find_if(normalized.rbegin(), normalized.rend(),
-                                  [](unsigned char c) {
-                                      return !std::isspace(c);
-                                  }).base(),
-                     normalized.end());
-    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    normalized.erase(normalized.begin(), std::find_if(normalized.begin(), normalized.end(), [](unsigned char c) { return !std::isspace(c); }));
+    normalized.erase(std::find_if(normalized.rbegin(), normalized.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), normalized.end());
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char c) { return std::tolower(c); });
 
     while (!normalized.empty() && normalized[0] == '.') {
         normalized.erase(0, 1);
@@ -57,12 +47,7 @@ static inline std::string normalizeFFmpegKitExtension(
     return safeExtension.empty() ? "bin" : safeExtension;
 }
 
-static inline std::string buildFFmpegKitUrl(const std::string &protocol,
-                                            const long id,
-                                            const std::string &extension) {
-    return protocol + ":" + std::to_string(id) + "." +
-           normalizeFFmpegKitExtension(extension);
-}
+static inline std::string buildFFmpegKitUrl(const std::string &protocol, const long id, const std::string &extension) { return protocol + ":" + std::to_string(id) + "." + normalizeFFmpegKitExtension(extension); }
 
 } // namespace internal
 } // namespace ffmpegkit

@@ -3,7 +3,7 @@ description: FFmpeg Kit Next for Flutter. Supports Android, iOS, iPadOS, macOS, 
 repository: https://github.com/arthenica/ffmpeg-kit-next
 issue_tracker: https://github.com/arthenica/ffmpeg-kit-next/issues
 homepage: https://github.com/arthenica/ffmpeg-kit-next
-version: 9.0.0
+version: 9.0.1
 publish_to: none
 
 environment:

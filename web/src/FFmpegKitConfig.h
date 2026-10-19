@@ -46,15 +46,14 @@ namespace ffmpegkit {
 class FFmpegKitConfig {
   public:
     /** Global library version */
-    static constexpr const char *FFmpegKitVersion = "9.0.0";
+    static constexpr const char *FFmpegKitVersion = "9.0.1";
 
     /**
      * Prefix of named pipes created by ffmpeg-kit.
      *
      * @deprecated Named pipes are deprecated. Use FFmpegKit input/output buffers and streams instead.
      */
-    static constexpr const char *FFmpegKitNamedPipePrefix
-        __attribute__((deprecated("Named pipes are deprecated. Use FFmpegKit input/output buffers and streams instead."))) = "fk_pipe_";
+    static constexpr const char *FFmpegKitNamedPipePrefix __attribute__((deprecated("Named pipes are deprecated. Use FFmpegKit input/output buffers and streams instead."))) = "fk_pipe_";
 
     /**
      * <p>Enables log and statistics redirection.
@@ -65,6 +64,8 @@ class FFmpegKitConfig {
      *
      * <p>Note that redirection is enabled by default. If you do not want to use
      * its functionality please use disableRedirection method to disable it.
+     *
+     * <p>Does nothing after shutdown.
      */
     static void enableRedirection();
 
@@ -76,6 +77,45 @@ class FFmpegKitConfig {
      * <code>getMediaInformation</code> methods do not work.
      */
     static void disableRedirection();
+
+    /**
+     * <p>Permanently shuts down FFmpegKit: requests FFmpeg cancellation, closes
+     * streams, disables redirection and drops pending messages and delete
+     * notifications. New executions fail without completion callbacks. Running
+     * FFprobe and media information executions cannot be cancelled.
+     *
+     * <p>Within waitTimeout, the first call allows up to two seconds of completion
+     * callback grace, then up to one second before clearing history. Queued workers
+     * stay on their original threads and fail without execution when served;
+     * their callbacks may run during grace and are dropped afterwards. Admitted
+     * callbacks may continue.
+     * Call again after false to wait longer; retries never restart grace or callbacks.
+     *
+     * <p>In-flight results, full output and callbacks are not guaranteed. For
+     * predictable results, cancel and wait for execution and output delivery first.
+     * Even after true, queued workers and handles may retain sessions and invoke
+     * cleanup functions later; keep their code and state valid until released.
+     * Stop submissions and stream writers first. Do not wait while holding a lock
+     * or thread that active work needs.
+     *
+     * <p>On the Web runtime thread this method never blocks. The first call
+     * still establishes grace and cleanup deadlines from waitTimeout; poll
+     * shutdown(0) from the event loop for completion. Other threads may wait.
+     *
+     * @param waitTimeout total wait budget in milliseconds; zero does not wait,
+     * a negative value waits indefinitely for counted work and history cleanup
+     * @return true when running executions, admitted callbacks, message delivery
+     * and history cleanup have finished; false at the deadline or from counted library
+     * work that cannot wait for itself. Queued workers are excluded after grace.
+     */
+    static bool shutdown(const int waitTimeout);
+
+    /**
+     * <p>Returns whether shutdown was called.
+     *
+     * @return true after shutdown, false before
+     */
+    static bool isShutdown();
 
     /**
      * <p>Sets and overrides <code>fontconfig</code> configuration directory.
@@ -99,9 +139,7 @@ class FFmpegKitConfig {
      * @param fontNameMapping   custom font name mappings, useful to access your
      * fonts with more friendly names
      */
-    static void
-    setFontDirectory(const std::string &fontDirectoryPath,
-                     const std::map<std::string, std::string> &fontNameMapping);
+    static void setFontDirectory(const std::string &fontDirectoryPath, const std::map<std::string, std::string> &fontNameMapping);
 
     /**
      * <p>Registers the fonts inside the given list of font directories, so they
@@ -117,39 +155,27 @@ class FFmpegKitConfig {
      * @param fontNameMapping   custom font name mappings, useful to access your
      * fonts with more friendly names
      */
-    static void setFontDirectoryList(
-        const std::list<std::string> &fontDirectoryList,
-        const std::map<std::string, std::string> &fontNameMapping);
+    static void setFontDirectoryList(const std::list<std::string> &fontDirectoryList, const std::map<std::string, std::string> &fontNameMapping);
 
     static long registerFFmpegKitInputBuffer(const std::vector<uint8_t> &data);
 
-    static long registerFFmpegKitInputBuffer(const uint8_t *data,
-                                             const size_t size);
+    static long registerFFmpegKitInputBuffer(const uint8_t *data, const size_t size);
 
-    static long registerFFmpegKitOutputBuffer(const long initialCapacity,
-                                              const long maxCapacity);
+    static long registerFFmpegKitOutputBuffer(const long initialCapacity, const long maxCapacity);
 
     static long getFFmpegKitBufferSize(const long bufferId);
 
-    static std::shared_ptr<std::vector<uint8_t>>
-    getFFmpegKitOutputBuffer(const long bufferId);
+    static std::shared_ptr<std::vector<uint8_t>> getFFmpegKitOutputBuffer(const long bufferId);
 
     static void unregisterFFmpegKitBuffer(const long bufferId);
 
     static long registerFFmpegKitStream(const long capacity, const int type);
 
-    static int writeFFmpegKitStream(const long streamId,
-                                    const std::vector<uint8_t> &data,
-                                    const size_t offset, const size_t length,
-                                    const int timeoutMs);
+    static int writeFFmpegKitStream(const long streamId, const std::vector<uint8_t> &data, const size_t offset, const size_t length, const int timeoutMs);
 
-    static int writeFFmpegKitStream(const long streamId, const uint8_t *data,
-                                    const size_t length,
-                                    const int timeoutMs);
+    static int writeFFmpegKitStream(const long streamId, const uint8_t *data, const size_t length, const int timeoutMs);
 
-    static std::shared_ptr<std::vector<uint8_t>>
-    readFFmpegKitStream(const long streamId, const int maxBytes,
-                        const int timeoutMs);
+    static std::shared_ptr<std::vector<uint8_t>> readFFmpegKitStream(const long streamId, const int maxBytes, const int timeoutMs);
 
     static void closeFFmpegKitStreamInput(const long streamId);
 
@@ -184,39 +210,42 @@ class FFmpegKitConfig {
      * @param variableValue environment variable value
      * @return zero on success, non-zero on error
      */
-    static int setEnvironmentVariable(const std::string &variableName,
-                                      const std::string &variableValue);
+    static int setEnvironmentVariable(const std::string &variableName, const std::string &variableValue);
 
     /**
      * <p>Synchronously executes the FFmpeg session provided.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
+     *
      * @param ffmpegSession FFmpeg session which includes command
      * options/arguments
      */
-    static void ffmpegExecute(
-        const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession);
+    static void ffmpegExecute(const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession);
 
     /**
      * <p>Synchronously executes the FFprobe session provided.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
+     *
      * @param ffprobeSession FFprobe session which includes command
      * options/arguments
      */
-    static void ffprobeExecute(
-        const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession);
+    static void ffprobeExecute(const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession);
 
     /**
      * <p>Synchronously executes the media information session provided.
+     *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
      *
      * @param mediaInformationSession media information session which includes
      * command options/arguments
      * @param waitTimeout             max time to wait until media information
      * is transmitted
      */
-    static void getMediaInformationExecute(
-        const std::shared_ptr<ffmpegkit::MediaInformationSession>
-            mediaInformationSession,
-        const int waitTimeout);
+    static void getMediaInformationExecute(const std::shared_ptr<ffmpegkit::MediaInformationSession> mediaInformationSession, const int waitTimeout);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given session.
@@ -225,11 +254,16 @@ class FFmpegKitConfig {
      * execution to complete. You must use an FFmpegSessionCompleteCallback if
      * you want to be notified about the result.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run, and its complete callbacks run on the
+     * calling thread before this method returns. Inside the complete callback
+     * of a session that shutdown failed, it runs them once that callback
+     * returned, so a callback that executes again does not recurse.
+     *
      * @param ffmpegSession FFmpeg session which includes command
      * options/arguments
      */
-    static void asyncFFmpegExecute(
-        const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession);
+    static void asyncFFmpegExecute(const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession);
 
     /**
      * <p>Starts an asynchronous FFprobe execution for the given session.
@@ -238,11 +272,16 @@ class FFmpegKitConfig {
      * execution to complete. You must use an FFprobeSessionCompleteCallback if
      * you want to be notified about the result.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run, and its complete callbacks run on the
+     * calling thread before this method returns. Inside the complete callback
+     * of a session that shutdown failed, it runs them once that callback
+     * returned, so a callback that executes again does not recurse.
+     *
      * @param ffprobeSession FFprobe session which includes command
      * options/arguments
      */
-    static void asyncFFprobeExecute(
-        const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession);
+    static void asyncFFprobeExecute(const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession);
 
     /**
      * <p>Starts an asynchronous FFprobe execution for the given media
@@ -253,15 +292,18 @@ class FFmpegKitConfig {
      * MediaInformationSessionCompleteCallback if you want to be notified about
      * the result.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run, and its complete callbacks run on the
+     * calling thread before this method returns. Inside the complete callback
+     * of a session that shutdown failed, it runs them once that callback
+     * returned, so a callback that executes again does not recurse.
+     *
      * @param mediaInformationSession media information session which includes
      * command options/arguments
      * @param waitTimeout             max time to wait until media information
      * is transmitted
      */
-    static void asyncGetMediaInformationExecute(
-        const std::shared_ptr<ffmpegkit::MediaInformationSession>
-            mediaInformationSession,
-        int waitTimeout);
+    static void asyncGetMediaInformationExecute(const std::shared_ptr<ffmpegkit::MediaInformationSession> mediaInformationSession, int waitTimeout);
 
     /**
      * <p>Sets a global log callback to redirect FFmpeg/FFprobe logs.
@@ -277,8 +319,7 @@ class FFmpegKitConfig {
      * @param statisticsCallback statistics callback or nullptr to disable a
      * previously defined statistics callback
      */
-    static void enableStatisticsCallback(
-        const ffmpegkit::StatisticsCallback statisticsCallback);
+    static void enableStatisticsCallback(const ffmpegkit::StatisticsCallback statisticsCallback);
 
     /**
      * <p>Sets a global FFmpegSessionCompleteCallback to receive execution
@@ -287,8 +328,7 @@ class FFmpegKitConfig {
      * @param ffmpegSessionCompleteCallback complete callback or nullptr to
      * disable a previously defined callback
      */
-    static void enableFFmpegSessionCompleteCallback(
-        const FFmpegSessionCompleteCallback ffmpegSessionCompleteCallback);
+    static void enableFFmpegSessionCompleteCallback(const FFmpegSessionCompleteCallback ffmpegSessionCompleteCallback);
 
     /**
      * <p>Returns the global FFmpegSessionCompleteCallback set.
@@ -304,8 +344,7 @@ class FFmpegKitConfig {
      * @param ffprobeSessionCompleteCallback complete callback or nullptr to
      * disable a previously defined callback
      */
-    static void enableFFprobeSessionCompleteCallback(
-        const FFprobeSessionCompleteCallback ffprobeSessionCompleteCallback);
+    static void enableFFprobeSessionCompleteCallback(const FFprobeSessionCompleteCallback ffprobeSessionCompleteCallback);
 
     /**
      * <p>Returns the global FFprobeSessionCompleteCallback set.
@@ -321,9 +360,7 @@ class FFmpegKitConfig {
      * @param mediaInformationSessionCompleteCallback complete callback or
      * nullptr to disable a previously defined callback
      */
-    static void enableMediaInformationSessionCompleteCallback(
-        const MediaInformationSessionCompleteCallback
-            mediaInformationSessionCompleteCallback);
+    static void enableMediaInformationSessionCompleteCallback(const MediaInformationSessionCompleteCallback mediaInformationSessionCompleteCallback);
 
     /**
      * <p>Returns the global MediaInformationSessionCompleteCallback set.
@@ -331,8 +368,7 @@ class FFmpegKitConfig {
      * @return global MediaInformationSessionCompleteCallback or nullptr if it
      * is not set
      */
-    static MediaInformationSessionCompleteCallback
-    getMediaInformationSessionCompleteCallback();
+    static MediaInformationSessionCompleteCallback getMediaInformationSessionCompleteCallback();
 
     /**
      * Returns the current log level.
@@ -395,16 +431,14 @@ class FFmpegKitConfig {
      *
      * @param listener listener to add
      */
-    static void addSessionDeleteListener(
-        const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener);
+    static void addSessionDeleteListener(const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener);
 
     /**
      * Removes a session delete listener.
      *
      * @param listener listener to remove
      */
-    static void removeSessionDeleteListener(
-        const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener);
+    static void removeSessionDeleteListener(const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener);
 
     /**
      * Returns the last session created from the session history.
@@ -426,8 +460,7 @@ class FFmpegKitConfig {
      *
      * @return all sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>>
-    getSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>> getSessions();
 
     /**
      * <p>Clears all, including ongoing, sessions in the session history.
@@ -440,34 +473,28 @@ class FFmpegKitConfig {
      *
      * @return all FFmpeg sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>>
-    getFFmpegSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>> getFFmpegSessions();
 
     /**
      * <p>Returns all FFprobe sessions in the session history.
      *
      * @return all FFprobe sessions in the session history
      */
-    static std::shared_ptr<
-        std::list<std::shared_ptr<ffmpegkit::FFprobeSession>>>
-    getFFprobeSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFprobeSession>>> getFFprobeSessions();
 
     /**
      * <p>Returns all MediaInformation sessions in the session history.
      *
      * @return all MediaInformation sessions in the session history
      */
-    static std::shared_ptr<
-        std::list<std::shared_ptr<ffmpegkit::MediaInformationSession>>>
-    getMediaInformationSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::MediaInformationSession>>> getMediaInformationSessions();
 
     /**
      * <p>Returns sessions that have the given state.
      *
      * @return sessions that have the given state from the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>>
-    getSessionsByState(const SessionState state);
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>> getSessionsByState(const SessionState state);
 
     /**
      * Returns the active log redirection strategy.
@@ -481,8 +508,7 @@ class FFmpegKitConfig {
      *
      * @param logRedirectionStrategy log redirection strategy
      */
-    static void setLogRedirectionStrategy(
-        const LogRedirectionStrategy logRedirectionStrategy);
+    static void setLogRedirectionStrategy(const LogRedirectionStrategy logRedirectionStrategy);
 
     /**
      * <p>Returns the number of async messages that are not transmitted to the
@@ -518,8 +544,7 @@ class FFmpegKitConfig {
      * @param arguments arguments
      * @return concatenated string containing all arguments
      */
-    static std::string
-    argumentsToString(std::shared_ptr<std::list<std::string>> arguments);
+    static std::string argumentsToString(std::shared_ptr<std::list<std::string>> arguments);
 };
 
 } // namespace ffmpegkit

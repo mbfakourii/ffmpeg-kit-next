@@ -72,10 +72,8 @@ inline std::shared_ptr<ffmpegkit::Session> adoptAnySession(FFKSession *handle) {
 }
 
 /** Rebuilds a std::list of sessions of mixed types and releases the list. */
-inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>>
-takeAnySessionList(FFKSessionList *list) {
-    auto result =
-        std::make_shared<std::list<std::shared_ptr<ffmpegkit::Session>>>();
+inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>> takeAnySessionList(FFKSessionList *list) {
+    auto result = std::make_shared<std::list<std::shared_ptr<ffmpegkit::Session>>>();
     if (list == nullptr) {
         return result;
     }
@@ -94,8 +92,7 @@ struct SessionDeleteListenerHolder {
 };
 
 inline void sessionDeleteTrampoline(long sessionId, void *userData) {
-    SessionDeleteListenerHolder *holder =
-        static_cast<SessionDeleteListenerHolder *>(userData);
+    SessionDeleteListenerHolder *holder = static_cast<SessionDeleteListenerHolder *>(userData);
     if (holder == nullptr || holder->listener == nullptr) {
         return;
     }
@@ -119,8 +116,7 @@ inline std::mutex &sessionDeleteTokenMutex() {
     return mutex;
 }
 
-inline std::map<ffmpegkit::SessionDeleteListener *, long> &
-sessionDeleteTokens() {
+inline std::map<ffmpegkit::SessionDeleteListener *, long> &sessionDeleteTokens() {
     static std::map<ffmpegkit::SessionDeleteListener *, long> tokens;
     return tokens;
 }
@@ -167,12 +163,14 @@ class StringMapArray {
  */
 class FFmpegKitConfig {
   public:
-    static constexpr const char *FFmpegKitVersion = "9.0.0";
+    static constexpr const char *FFmpegKitVersion = "9.0.1";
     FFMPEGKIT_DEPRECATED("Named pipes are deprecated. Use FFmpegKit input/output buffers and streams instead.")
     static constexpr const char *FFmpegKitNamedPipePrefix = "fk_pipe_";
 
     /**
      * <p>Enables log and statistics redirection.
+     *
+     * <p>Does nothing after shutdown.
      */
     static void enableRedirection() {
         ffk_config_enable_redirection();
@@ -188,14 +186,59 @@ class FFmpegKitConfig {
     }
 
     /**
+     * <p>Permanently shuts down FFmpegKit: requests FFmpeg cancellation, closes
+     * streams, disables redirection and drops pending messages and delete
+     * notifications. New executions fail without completion callbacks. Running
+     * FFprobe and media information executions cannot be cancelled.
+     *
+     * <p>Within waitTimeout, the first call allows up to two seconds of completion
+     * callback grace, then up to one second before clearing history. Queued workers
+     * stay on their original threads and fail without execution when served;
+     * their callbacks may run during grace and are dropped afterwards. Admitted
+     * callbacks may continue.
+     * Call again after false to wait longer; retries never restart grace or callbacks.
+     *
+     * <p>In-flight results, full output and callbacks are not guaranteed. For
+     * predictable results, cancel and wait for execution and output delivery first.
+     * Even after true, queued workers and handles may retain sessions and invoke
+     * cleanup functions later; keep their code and state valid until released.
+     * Stop submissions and stream writers first. Do not wait while holding a lock
+     * or thread that active work needs.
+     *
+     * <p>Never call shutdown from DllMain or a DLL static destructor: the loader
+     * lock prevents other library threads from finishing.
+     *
+     * @param waitTimeout total wait budget in milliseconds; zero does not wait,
+     * a negative value waits indefinitely for counted work and history cleanup
+     * @return true when running executions, admitted callbacks, message delivery
+     * and history cleanup have finished; false at the deadline or from counted library
+     * work that cannot wait for itself. Queued workers are excluded after grace.
+     */
+    static bool shutdown(const int waitTimeout) {
+        const bool result = ffk_config_shutdown(waitTimeout) != 0;
+        ffmpegkit::detail::checkError();
+        return result;
+    }
+
+    /**
+     * <p>Returns whether shutdown was called.
+     *
+     * @return true after shutdown, false before
+     */
+    static bool isShutdown() {
+        const bool result = ffk_config_is_shutdown() != 0;
+        ffmpegkit::detail::checkError();
+        return result;
+    }
+
+    /**
      * <p>Sets and overrides fontconfig configuration directory.
      *
      * @param path directory that contains fontconfig configuration
      * @return zero on success, non-zero on error
      */
     static int setFontconfigConfigurationPath(const std::string &path) {
-        const int result =
-            ffk_config_set_fontconfig_configuration_path(path.c_str());
+        const int result = ffk_config_set_fontconfig_configuration_path(path.c_str());
         ffmpegkit::detail::checkError();
         return result;
     }
@@ -206,12 +249,9 @@ class FFmpegKitConfig {
      * @param fontDirectoryPath directory that contains fonts
      * @param fontNameMapping mapping from font name to font file name
      */
-    static void
-    setFontDirectory(const std::string &fontDirectoryPath,
-                     const std::map<std::string, std::string> &fontNameMapping) {
+    static void setFontDirectory(const std::string &fontDirectoryPath, const std::map<std::string, std::string> &fontNameMapping) {
         const ffmpegkit::detail::StringMapArray mapping(fontNameMapping);
-        ffk_config_set_font_directory(fontDirectoryPath.c_str(), mapping.keys(),
-                                      mapping.values(), mapping.size());
+        ffk_config_set_font_directory(fontDirectoryPath.c_str(), mapping.keys(), mapping.values(), mapping.size());
         ffmpegkit::detail::checkError();
     }
 
@@ -221,16 +261,23 @@ class FFmpegKitConfig {
      * @param fontDirectoryList list of directories that contain fonts
      * @param fontNameMapping mapping from font name to font file name
      */
-    static void setFontDirectoryList(
-        const std::list<std::string> &fontDirectoryList,
-        const std::map<std::string, std::string> &fontNameMapping) {
+    static void setFontDirectoryList(const std::list<std::string> &fontDirectoryList, const std::map<std::string, std::string> &fontNameMapping) {
         const ffmpegkit::detail::ArgumentArray directories(fontDirectoryList);
         const ffmpegkit::detail::StringMapArray mapping(fontNameMapping);
-        ffk_config_set_font_directory_list(directories.data(),
-                                           directories.size(), mapping.keys(),
-                                           mapping.values(), mapping.size());
+        ffk_config_set_font_directory_list(directories.data(), directories.size(), mapping.keys(), mapping.values(), mapping.size());
         ffmpegkit::detail::checkError();
     }
+
+    // The C functions behind these two wrappers are deprecated as well. The
+    // bodies are compiled in every file that includes this header, so their
+    // calls are kept from warning there
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
     /**
      * <p>Named pipes are not supported on Windows. Always returns nullptr.
@@ -239,10 +286,7 @@ class FFmpegKitConfig {
      * @return nullptr
      */
     FFMPEGKIT_DEPRECATED("Named pipes are deprecated. Use FFmpegKit input/output buffers and streams instead.")
-    static std::shared_ptr<std::string> registerNewFFmpegPipe() {
-        return ffmpegkit::detail::takeOptionalString(
-            ffk_config_register_new_ffmpeg_pipe());
-    }
+    static std::shared_ptr<std::string> registerNewFFmpegPipe() { return ffmpegkit::detail::takeOptionalString(ffk_config_register_new_ffmpeg_pipe()); }
 
     /**
      * <p>Named pipes are not supported on Windows. Does nothing.
@@ -254,6 +298,12 @@ class FFmpegKitConfig {
     static void closeFFmpegPipe(const std::string &ffmpegPipePath) {
         ffk_config_close_ffmpeg_pipe(ffmpegPipePath.c_str());
     }
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 
     /**
      * <p>Registers an input buffer that can be read with the
@@ -274,10 +324,8 @@ class FFmpegKitConfig {
      * @param size buffer size
      * @return buffer id
      */
-    static long registerFFmpegKitInputBuffer(const uint8_t *data,
-                                             const size_t size) {
-        const long bufferId =
-            ffk_config_register_ffmpegkit_input_buffer(data, size);
+    static long registerFFmpegKitInputBuffer(const uint8_t *data, const size_t size) {
+        const long bufferId = ffk_config_register_ffmpegkit_input_buffer(data, size);
         ffmpegkit::detail::checkError();
         return bufferId;
     }
@@ -290,10 +338,8 @@ class FFmpegKitConfig {
      * @param maxCapacity maximum capacity in bytes
      * @return buffer id
      */
-    static long registerFFmpegKitOutputBuffer(const long initialCapacity,
-                                              const long maxCapacity) {
-        const long bufferId = ffk_config_register_ffmpegkit_output_buffer(
-            initialCapacity, maxCapacity);
+    static long registerFFmpegKitOutputBuffer(const long initialCapacity, const long maxCapacity) {
+        const long bufferId = ffk_config_register_ffmpegkit_output_buffer(initialCapacity, maxCapacity);
         ffmpegkit::detail::checkError();
         return bufferId;
     }
@@ -316,12 +362,10 @@ class FFmpegKitConfig {
      * @param bufferId buffer id
      * @return buffer contents or nullptr if the buffer does not exist
      */
-    static std::shared_ptr<std::vector<uint8_t>>
-    getFFmpegKitOutputBuffer(const long bufferId) {
+    static std::shared_ptr<std::vector<uint8_t>> getFFmpegKitOutputBuffer(const long bufferId) {
         uint8_t *data = nullptr;
         size_t size = 0;
-        const int found =
-            ffk_config_get_ffmpegkit_output_buffer(bufferId, &data, &size);
+        const int found = ffk_config_get_ffmpegkit_output_buffer(bufferId, &data, &size);
         ffmpegkit::detail::checkError();
         if (found == 0) {
             return nullptr;
@@ -348,8 +392,7 @@ class FFmpegKitConfig {
      * @return stream id
      */
     static long registerFFmpegKitStream(const long capacity, const int type) {
-        const long streamId =
-            ffk_config_register_ffmpegkit_stream(capacity, type);
+        const long streamId = ffk_config_register_ffmpegkit_stream(capacity, type);
         ffmpegkit::detail::checkError();
         return streamId;
     }
@@ -364,16 +407,11 @@ class FFmpegKitConfig {
      * @param timeoutMs write timeout in milliseconds
      * @return number of bytes written
      */
-    static int writeFFmpegKitStream(const long streamId,
-                                    const std::vector<uint8_t> &data,
-                                    const size_t offset, const size_t length,
-                                    const int timeoutMs) {
+    static int writeFFmpegKitStream(const long streamId, const std::vector<uint8_t> &data, const size_t offset, const size_t length, const int timeoutMs) {
         if (offset > data.size() || length > data.size() - offset) {
-            throw ffmpegkit::Exception(
-                "offset and length must fit inside data");
+            throw ffmpegkit::Exception("offset and length must fit inside data");
         }
-        return writeFFmpegKitStream(streamId, data.data() + offset, length,
-                                    timeoutMs);
+        return writeFFmpegKitStream(streamId, data.data() + offset, length, timeoutMs);
     }
 
     /**
@@ -385,10 +423,8 @@ class FFmpegKitConfig {
      * @param timeoutMs write timeout in milliseconds
      * @return number of bytes written
      */
-    static int writeFFmpegKitStream(const long streamId, const uint8_t *data,
-                                    const size_t length, const int timeoutMs) {
-        const int written = ffk_config_write_ffmpegkit_stream(streamId, data,
-                                                              length, timeoutMs);
+    static int writeFFmpegKitStream(const long streamId, const uint8_t *data, const size_t length, const int timeoutMs) {
+        const int written = ffk_config_write_ffmpegkit_stream(streamId, data, length, timeoutMs);
         ffmpegkit::detail::checkError();
         return written;
     }
@@ -401,13 +437,10 @@ class FFmpegKitConfig {
      * @param timeoutMs read timeout in milliseconds
      * @return bytes read or nullptr when the stream does not exist
      */
-    static std::shared_ptr<std::vector<uint8_t>>
-    readFFmpegKitStream(const long streamId, const int maxBytes,
-                        const int timeoutMs) {
+    static std::shared_ptr<std::vector<uint8_t>> readFFmpegKitStream(const long streamId, const int maxBytes, const int timeoutMs) {
         uint8_t *data = nullptr;
         size_t size = 0;
-        const int found = ffk_config_read_ffmpegkit_stream(
-            streamId, maxBytes, timeoutMs, &data, &size);
+        const int found = ffk_config_read_ffmpegkit_stream(streamId, maxBytes, timeoutMs, &data, &size);
         ffmpegkit::detail::checkError();
         if (found == 0) {
             return nullptr;
@@ -479,10 +512,8 @@ class FFmpegKitConfig {
      * @param variableValue environment variable value
      * @return zero on success, non-zero on error
      */
-    static int setEnvironmentVariable(const std::string &variableName,
-                                      const std::string &variableValue) {
-        const int result = ffk_config_set_environment_variable(
-            variableName.c_str(), variableValue.c_str());
+    static int setEnvironmentVariable(const std::string &variableName, const std::string &variableValue) {
+        const int result = ffk_config_set_environment_variable(variableName.c_str(), variableValue.c_str());
         ffmpegkit::detail::checkError();
         return result;
     }
@@ -501,10 +532,12 @@ class FFmpegKitConfig {
     /**
      * <p>Synchronously executes the FFmpeg session provided.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
+     *
      * @param ffmpegSession FFmpeg session to execute
      */
-    static void
-    ffmpegExecute(const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession) {
+    static void ffmpegExecute(const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession) {
         ffk_config_ffmpeg_execute(sessionHandle(ffmpegSession));
         ffmpegkit::detail::checkError();
     }
@@ -512,10 +545,12 @@ class FFmpegKitConfig {
     /**
      * <p>Synchronously executes the FFprobe session provided.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
+     *
      * @param ffprobeSession FFprobe session to execute
      */
-    static void ffprobeExecute(
-        const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession) {
+    static void ffprobeExecute(const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession) {
         ffk_config_ffprobe_execute(sessionHandle(ffprobeSession));
         ffmpegkit::detail::checkError();
     }
@@ -523,26 +558,29 @@ class FFmpegKitConfig {
     /**
      * <p>Synchronously executes the media information session provided.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" and does not run.
+     *
      * @param mediaInformationSession media information session to execute
      * @param waitTimeout max time to wait until media information is
      * transmitted
      */
-    static void getMediaInformationExecute(
-        const std::shared_ptr<ffmpegkit::MediaInformationSession>
-            mediaInformationSession,
-        const int waitTimeout) {
-        ffk_config_get_media_information_execute(
-            sessionHandle(mediaInformationSession), waitTimeout);
+    static void getMediaInformationExecute(const std::shared_ptr<ffmpegkit::MediaInformationSession> mediaInformationSession, const int waitTimeout) {
+        ffk_config_get_media_information_execute(sessionHandle(mediaInformationSession), waitTimeout);
         ffmpegkit::detail::checkError();
     }
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given session.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" without native execution or completion callbacks. A worker
+     * submitted earlier but not yet served fails on its original thread;
+     * completion callbacks may run during shutdown grace and are dropped after it.
+     *
      * @param ffmpegSession FFmpeg session to execute
      */
-    static void asyncFFmpegExecute(
-        const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession) {
+    static void asyncFFmpegExecute(const std::shared_ptr<ffmpegkit::FFmpegSession> ffmpegSession) {
         ffk_config_async_ffmpeg_execute(sessionHandle(ffmpegSession));
         ffmpegkit::detail::checkError();
     }
@@ -550,10 +588,14 @@ class FFmpegKitConfig {
     /**
      * <p>Starts an asynchronous FFprobe execution for the given session.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" without native execution or completion callbacks. A worker
+     * submitted earlier but not yet served fails on its original thread;
+     * completion callbacks may run during shutdown grace and are dropped after it.
+     *
      * @param ffprobeSession FFprobe session to execute
      */
-    static void asyncFFprobeExecute(
-        const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession) {
+    static void asyncFFprobeExecute(const std::shared_ptr<ffmpegkit::FFprobeSession> ffprobeSession) {
         ffk_config_async_ffprobe_execute(sessionHandle(ffprobeSession));
         ffmpegkit::detail::checkError();
     }
@@ -562,16 +604,17 @@ class FFmpegKitConfig {
      * <p>Starts an asynchronous media information execution for the given
      * session.
      *
+     * <p>After shutdown the session fails with the reason "FFmpegKit has been
+     * shut down" without native execution or completion callbacks. A worker
+     * submitted earlier but not yet served fails on its original thread;
+     * completion callbacks may run during shutdown grace and are dropped after it.
+     *
      * @param mediaInformationSession media information session to execute
      * @param waitTimeout max time to wait until media information is
      * transmitted
      */
-    static void asyncGetMediaInformationExecute(
-        const std::shared_ptr<ffmpegkit::MediaInformationSession>
-            mediaInformationSession,
-        int waitTimeout) {
-        ffk_config_async_get_media_information_execute(
-            sessionHandle(mediaInformationSession), waitTimeout);
+    static void asyncGetMediaInformationExecute(const std::shared_ptr<ffmpegkit::MediaInformationSession> mediaInformationSession, int waitTimeout) {
+        ffk_config_async_get_media_information_execute(sessionHandle(mediaInformationSession), waitTimeout);
         ffmpegkit::detail::checkError();
     }
 
@@ -582,10 +625,7 @@ class FFmpegKitConfig {
      * defined callback
      */
     static void enableLogCallback(const ffmpegkit::LogCallback logCallback) {
-        ffk_config_enable_log_callback(
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>());
+        ffk_config_enable_log_callback(ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>());
         ffmpegkit::detail::checkError();
     }
 
@@ -595,13 +635,8 @@ class FFmpegKitConfig {
      * @param statisticsCallback statistics callback or nullptr to disable a
      * previously defined callback
      */
-    static void enableStatisticsCallback(
-        const ffmpegkit::StatisticsCallback statisticsCallback) {
-        ffk_config_enable_statistics_callback(
-            ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
-            ffmpegkit::detail::makeCallbackHolder(statisticsCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::StatisticsCallback>());
+    static void enableStatisticsCallback(const ffmpegkit::StatisticsCallback statisticsCallback) {
+        ffk_config_enable_statistics_callback(ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback), ffmpegkit::detail::makeCallbackHolder(statisticsCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::StatisticsCallback>());
         ffmpegkit::detail::checkError();
     }
 
@@ -611,16 +646,9 @@ class FFmpegKitConfig {
      * @param ffmpegSessionCompleteCallback complete callback or nullptr to
      * disable a previously defined callback
      */
-    static void enableFFmpegSessionCompleteCallback(
-        const FFmpegSessionCompleteCallback ffmpegSessionCompleteCallback) {
-        ffk_config_enable_ffmpeg_session_complete_callback(
-            ffmpegSessionCompleteCallback
-                ? &ffmpegkit::detail::ffmpegSessionTrampoline
-                : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(
-                ffmpegSessionCompleteCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFmpegSessionCompleteCallback>());
+    static void enableFFmpegSessionCompleteCallback(const FFmpegSessionCompleteCallback ffmpegSessionCompleteCallback) {
+        ffk_config_enable_ffmpeg_session_complete_callback(ffmpegSessionCompleteCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(ffmpegSessionCompleteCallback),
+                                                           ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFmpegSessionCompleteCallback>());
         ffmpegkit::detail::checkError();
     }
 
@@ -632,12 +660,8 @@ class FFmpegKitConfig {
     static FFmpegSessionCompleteCallback getFFmpegSessionCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered = ffk_config_get_ffmpeg_session_complete_callback(
-            &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::FFmpegSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::ffmpegSessionTrampoline);
+        const int registered = ffk_config_get_ffmpeg_session_complete_callback(&callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::FFmpegSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::ffmpegSessionTrampoline);
     }
 
     /**
@@ -646,16 +670,9 @@ class FFmpegKitConfig {
      * @param ffprobeSessionCompleteCallback complete callback or nullptr to
      * disable a previously defined callback
      */
-    static void enableFFprobeSessionCompleteCallback(
-        const FFprobeSessionCompleteCallback ffprobeSessionCompleteCallback) {
-        ffk_config_enable_ffprobe_session_complete_callback(
-            ffprobeSessionCompleteCallback
-                ? &ffmpegkit::detail::ffprobeSessionTrampoline
-                : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(
-                ffprobeSessionCompleteCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFprobeSessionCompleteCallback>());
+    static void enableFFprobeSessionCompleteCallback(const FFprobeSessionCompleteCallback ffprobeSessionCompleteCallback) {
+        ffk_config_enable_ffprobe_session_complete_callback(ffprobeSessionCompleteCallback ? &ffmpegkit::detail::ffprobeSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(ffprobeSessionCompleteCallback),
+                                                            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFprobeSessionCompleteCallback>());
         ffmpegkit::detail::checkError();
     }
 
@@ -667,12 +684,8 @@ class FFmpegKitConfig {
     static FFprobeSessionCompleteCallback getFFprobeSessionCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered = ffk_config_get_ffprobe_session_complete_callback(
-            &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::FFprobeSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::ffprobeSessionTrampoline);
+        const int registered = ffk_config_get_ffprobe_session_complete_callback(&callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::FFprobeSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::ffprobeSessionTrampoline);
     }
 
     /**
@@ -681,17 +694,9 @@ class FFmpegKitConfig {
      * @param mediaInformationSessionCompleteCallback complete callback or
      * nullptr to disable a previously defined callback
      */
-    static void enableMediaInformationSessionCompleteCallback(
-        const MediaInformationSessionCompleteCallback
-            mediaInformationSessionCompleteCallback) {
-        ffk_config_enable_media_information_session_complete_callback(
-            mediaInformationSessionCompleteCallback
-                ? &ffmpegkit::detail::mediaInformationSessionTrampoline
-                : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(
-                mediaInformationSessionCompleteCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::MediaInformationSessionCompleteCallback>());
+    static void enableMediaInformationSessionCompleteCallback(const MediaInformationSessionCompleteCallback mediaInformationSessionCompleteCallback) {
+        ffk_config_enable_media_information_session_complete_callback(mediaInformationSessionCompleteCallback ? &ffmpegkit::detail::mediaInformationSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(mediaInformationSessionCompleteCallback),
+                                                                      ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::MediaInformationSessionCompleteCallback>());
         ffmpegkit::detail::checkError();
     }
 
@@ -700,17 +705,11 @@ class FFmpegKitConfig {
      *
      * @return global MediaInformationSessionCompleteCallback
      */
-    static MediaInformationSessionCompleteCallback
-    getMediaInformationSessionCompleteCallback() {
+    static MediaInformationSessionCompleteCallback getMediaInformationSessionCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered =
-            ffk_config_get_media_information_session_complete_callback(
-                &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::MediaInformationSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::mediaInformationSessionTrampoline);
+        const int registered = ffk_config_get_media_information_session_complete_callback(&callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::MediaInformationSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::mediaInformationSessionTrampoline);
     }
 
     /**
@@ -738,10 +737,7 @@ class FFmpegKitConfig {
      * @param level log level
      * @return string representation of the level
      */
-    static std::string logLevelToString(const ffmpegkit::Level level) {
-        return ffmpegkit::detail::takeString(
-            ffk_config_log_level_to_string(static_cast<int>(level)));
-    }
+    static std::string logLevelToString(const ffmpegkit::Level level) { return ffmpegkit::detail::takeString(ffk_config_log_level_to_string(static_cast<int>(level))); }
 
     /**
      * <p>Returns the maximum number of sessions kept in the session history.
@@ -789,25 +785,20 @@ class FFmpegKitConfig {
      *
      * @param listener listener to add
      */
-    static void addSessionDeleteListener(
-        const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener) {
+    static void addSessionDeleteListener(const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener) {
         if (listener == nullptr) {
             return;
         }
-        ffmpegkit::detail::SessionDeleteListenerHolder *holder =
-            new ffmpegkit::detail::SessionDeleteListenerHolder();
+        ffmpegkit::detail::SessionDeleteListenerHolder *holder = new ffmpegkit::detail::SessionDeleteListenerHolder();
         holder->listener = listener;
-        const long token = ffk_config_add_session_delete_listener(
-            &ffmpegkit::detail::sessionDeleteTrampoline, holder,
-            &ffmpegkit::detail::freeSessionDeleteListenerHolder);
+        const long token = ffk_config_add_session_delete_listener(&ffmpegkit::detail::sessionDeleteTrampoline, holder, &ffmpegkit::detail::freeSessionDeleteListenerHolder);
         if (ffk_has_error()) {
             ffmpegkit::detail::checkError();
         }
         if (token == 0) {
             return;
         }
-        std::lock_guard<std::mutex> lock(
-            ffmpegkit::detail::sessionDeleteTokenMutex());
+        std::lock_guard<std::mutex> lock(ffmpegkit::detail::sessionDeleteTokenMutex());
         ffmpegkit::detail::sessionDeleteTokens()[listener.get()] = token;
     }
 
@@ -816,15 +807,13 @@ class FFmpegKitConfig {
      *
      * @param listener listener to remove
      */
-    static void removeSessionDeleteListener(
-        const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener) {
+    static void removeSessionDeleteListener(const std::shared_ptr<ffmpegkit::SessionDeleteListener> listener) {
         if (listener == nullptr) {
             return;
         }
         long token = 0;
         {
-            std::lock_guard<std::mutex> lock(
-                ffmpegkit::detail::sessionDeleteTokenMutex());
+            std::lock_guard<std::mutex> lock(ffmpegkit::detail::sessionDeleteTokenMutex());
             auto &tokens = ffmpegkit::detail::sessionDeleteTokens();
             auto entry = tokens.find(listener.get());
             if (entry == tokens.end()) {
@@ -864,10 +853,7 @@ class FFmpegKitConfig {
      *
      * @return all sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>>
-    getSessions() {
-        return ffmpegkit::detail::takeAnySessionList(ffk_config_get_sessions());
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>> getSessions() { return ffmpegkit::detail::takeAnySessionList(ffk_config_get_sessions()); }
 
     /**
      * <p>Clears the session history.
@@ -882,36 +868,21 @@ class FFmpegKitConfig {
      *
      * @return all FFmpeg sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>>
-    getFFmpegSessions() {
-        return ffmpegkit::detail::takeSessionList<ffmpegkit::FFmpegSession>(
-            ffk_config_get_ffmpeg_sessions());
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFmpegSession>>> getFFmpegSessions() { return ffmpegkit::detail::takeSessionList<ffmpegkit::FFmpegSession>(ffk_config_get_ffmpeg_sessions()); }
 
     /**
      * <p>Returns all FFprobe sessions in the session history.
      *
      * @return all FFprobe sessions in the session history
      */
-    static std::shared_ptr<
-        std::list<std::shared_ptr<ffmpegkit::FFprobeSession>>>
-    getFFprobeSessions() {
-        return ffmpegkit::detail::takeSessionList<ffmpegkit::FFprobeSession>(
-            ffk_config_get_ffprobe_sessions());
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::FFprobeSession>>> getFFprobeSessions() { return ffmpegkit::detail::takeSessionList<ffmpegkit::FFprobeSession>(ffk_config_get_ffprobe_sessions()); }
 
     /**
      * <p>Returns all MediaInformation sessions in the session history.
      *
      * @return all MediaInformation sessions in the session history
      */
-    static std::shared_ptr<
-        std::list<std::shared_ptr<ffmpegkit::MediaInformationSession>>>
-    getMediaInformationSessions() {
-        return ffmpegkit::detail::takeSessionList<
-            ffmpegkit::MediaInformationSession>(
-            ffk_config_get_media_information_sessions());
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::MediaInformationSession>>> getMediaInformationSessions() { return ffmpegkit::detail::takeSessionList<ffmpegkit::MediaInformationSession>(ffk_config_get_media_information_sessions()); }
 
     /**
      * <p>Returns sessions that have the given state.
@@ -919,31 +890,22 @@ class FFmpegKitConfig {
      * @param state session state
      * @return sessions that have the given state
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>>
-    getSessionsByState(const SessionState state) {
-        return ffmpegkit::detail::takeAnySessionList(
-            ffk_config_get_sessions_by_state(static_cast<int>(state)));
-    }
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Session>>> getSessionsByState(const SessionState state) { return ffmpegkit::detail::takeAnySessionList(ffk_config_get_sessions_by_state(static_cast<int>(state))); }
 
     /**
      * <p>Returns the active log redirection strategy.
      *
      * @return log redirection strategy
      */
-    static LogRedirectionStrategy getLogRedirectionStrategy() {
-        return static_cast<LogRedirectionStrategy>(
-            ffk_config_get_log_redirection_strategy());
-    }
+    static LogRedirectionStrategy getLogRedirectionStrategy() { return static_cast<LogRedirectionStrategy>(ffk_config_get_log_redirection_strategy()); }
 
     /**
      * <p>Sets the log redirection strategy.
      *
      * @param logRedirectionStrategy log redirection strategy
      */
-    static void setLogRedirectionStrategy(
-        const LogRedirectionStrategy logRedirectionStrategy) {
-        ffk_config_set_log_redirection_strategy(
-            static_cast<int>(logRedirectionStrategy));
+    static void setLogRedirectionStrategy(const LogRedirectionStrategy logRedirectionStrategy) {
+        ffk_config_set_log_redirection_strategy(static_cast<int>(logRedirectionStrategy));
         ffmpegkit::detail::checkError();
     }
 
@@ -966,10 +928,7 @@ class FFmpegKitConfig {
      * @param state session state
      * @return string representation of the state
      */
-    static std::string sessionStateToString(SessionState state) {
-        return ffmpegkit::detail::takeString(
-            ffk_config_session_state_to_string(static_cast<int>(state)));
-    }
+    static std::string sessionStateToString(SessionState state) { return ffmpegkit::detail::takeString(ffk_config_session_state_to_string(static_cast<int>(state))); }
 
     /**
      * <p>Parses the given command into arguments. Uses space character to
@@ -991,25 +950,17 @@ class FFmpegKitConfig {
      * @param arguments arguments
      * @return concatenated string containing all arguments
      */
-    static std::string
-    argumentsToString(std::shared_ptr<std::list<std::string>> arguments) {
+    static std::string argumentsToString(std::shared_ptr<std::list<std::string>> arguments) {
         if (arguments == nullptr) {
             return std::string();
         }
         const ffmpegkit::detail::ArgumentArray argumentArray(*arguments);
-        return ffmpegkit::detail::takeString(ffk_config_arguments_to_string(
-            argumentArray.data(), argumentArray.size()));
+        return ffmpegkit::detail::takeString(ffk_config_arguments_to_string(argumentArray.data(), argumentArray.size()));
     }
 
   private:
     /** Borrows the library handle a facade session wraps. */
-    template <typename SessionType>
-    static FFKSession *
-    sessionHandle(const std::shared_ptr<SessionType> &session) {
-        return session == nullptr
-                   ? nullptr
-                   : ffmpegkit::detail::sessionHandleOf(*session);
-    }
+    template <typename SessionType> static FFKSession *sessionHandle(const std::shared_ptr<SessionType> &session) { return session == nullptr ? nullptr : ffmpegkit::detail::sessionHandleOf(*session); }
 };
 
 } // namespace ffmpegkit

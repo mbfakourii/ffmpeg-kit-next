@@ -20,4 +20,12 @@
 #import <FlutterMacOS/FlutterMacOS.h>
 
 @interface FFmpegKitFlutterPlugin : NSObject<FlutterPlugin,FlutterStreamHandler>
+/**
+ * Stop this engine's plugin before calling FlutterEngine.shutDownEngine.
+ * macOS Flutter does not notify plugins when its engine shuts down, and pending
+ * replies can retain the engine. This method settles those replies, closes
+ * admission, and cancels owned work without shutting down the shared library.
+ * Call on the main thread; repeated calls are harmless.
+ */
++ (void)detachFromEngine:(NSObject<FlutterPluginRegistry> *)engine NS_SWIFT_NAME(detach(from:));
 @end

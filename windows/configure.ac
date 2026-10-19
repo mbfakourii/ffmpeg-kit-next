@@ -1,6 +1,6 @@
-# ffmpeg-kit-next 9.0.0 configure.ac (windows)
+# ffmpeg-kit-next 9.0.1 configure.ac (windows)
 
-AC_INIT([ffmpeg-kit-next], [9.0.0], [https://github.com/arthenica/ffmpeg-kit-next/issues/new])
+AC_INIT([ffmpeg-kit-next], [9.0.1], [https://github.com/arthenica/ffmpeg-kit-next/issues/new])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/ffmpegkit_c.cpp])
 
@@ -56,7 +56,10 @@ AC_ARG_ENABLE([static-mingw-runtime],
 # Windows system libraries needed to build the shared library:
 #   - winpthread provides the pthread API used by the C++ layer
 #   - bcrypt provides the CNG primitives used for secure random data
-WINDOWS_LIBS="-lbcrypt"
+#   - shell32 and ole32 provide SHGetKnownFolderPath and CoTaskMemFree, used to
+#     place the fontconfig directory. uuid is not linked: it is a static
+#     archive, which makes libtool build a static library only
+WINDOWS_LIBS="-lbcrypt -lshell32 -lole32"
 
 if test "x$enable_static_mingw_runtime" = "xyes"; then
 

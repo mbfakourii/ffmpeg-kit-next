@@ -32,11 +32,19 @@ namespace ffmpegkit {
  * through the flat C API's per thread error slot and this header-only facade
  * raises them again inside the caller's own translation unit, so the exception
  * is created, thrown and caught entirely by the caller's compiler and runtime.
+ *
+ * <p>The message is owned here. With _HAS_EXCEPTIONS=0, which Flutter's Windows
+ * build settings define, the MSVC standard exceptions keep only a pointer to
+ * the text they are given.
  */
 class Exception : public std::runtime_error {
   public:
-    explicit Exception(const std::string &message)
-        : std::runtime_error(message) {}
+    explicit Exception(const std::string &message) : std::runtime_error(""), _message(message) {}
+
+    const char *what() const noexcept override { return _message.c_str(); }
+
+  private:
+    std::string _message;
 };
 
 } // namespace ffmpegkit

@@ -140,132 +140,141 @@ declare module 'ffmpeg-kit-next-react-native' {
 
   export class FFmpegKitConfig {
 
-    static init(printLoadConfirmation?: boolean): Promise<void>;
+      /**
+       * Permanent native shutdown; timeout in milliseconds: zero polls, negative waits indefinitely.
+       * Drops JS callbacks immediately. Does not await callback Promises or permit engine unloading.
+       */
+      static shutdown(waitTimeout: number): Promise<boolean>;
 
-    static uninit(): Promise<void>;
+      /** Queries native state; true means shutdown started, not necessarily completed. */
+      static isShutdown(): Promise<boolean>;
 
-    static enableRedirection(): Promise<void>;
+      static init(printLoadConfirmation?: boolean): Promise<void>;
 
-    static disableRedirection(): Promise<void>;
+      static uninit(): Promise<void>;
 
-    static setFontconfigConfigurationPath(path: string): Promise<void>;
+      static enableRedirection(): Promise<void>;
 
-    static setFontDirectory(path: string, mapping?: { [key: string]: string }): Promise<void>;
+      static disableRedirection(): Promise<void>;
 
-    static setFontDirectoryList(fontDirectoryList: string[], mapping?: { [key: string]: string }): Promise<void>;
+      static setFontconfigConfigurationPath(path: string): Promise<void>;
 
-    static registerNewFFmpegPipe(): Promise<string>;
+      static setFontDirectory(path: string, mapping?: {[key: string]: string}): Promise<void>;
 
-    static closeFFmpegPipe(ffmpegPipePath: string): Promise<void>;
+      static setFontDirectoryList(fontDirectoryList: string[], mapping?: {[key: string]: string}): Promise<void>;
 
-    static getFFmpegVersion(): Promise<string>;
+      static registerNewFFmpegPipe(): Promise<string>;
 
-    static getVersion(): Promise<string>;
+      static closeFFmpegPipe(ffmpegPipePath: string): Promise<void>;
 
-    /**
-     * @deprecated Flutter builds do not have an LTS build concept.
-     */
-    static isLTSBuild(): Promise<boolean>;
+      static getFFmpegVersion(): Promise<string>;
 
-    static getBuildDate(): Promise<string>;
+      static getVersion(): Promise<string>;
 
-    static setEnvironmentVariable(name: string, value: string): Promise<void>;
+      /**
+       * @deprecated Flutter builds do not have an LTS build concept.
+       */
+      static isLTSBuild(): Promise<boolean>;
 
-    static ignoreSignal(signal: Signal): Promise<void>;
+      static getBuildDate(): Promise<string>;
 
-    static ffmpegExecute(session: FFmpegSession): Promise<void>;
+      static setEnvironmentVariable(name: string, value: string): Promise<void>;
 
-    static ffprobeExecute(session: FFprobeSession): Promise<void>;
+      static ignoreSignal(signal: Signal): Promise<void>;
 
-    static getMediaInformationExecute(session: MediaInformationSession, waitTimeout?: number): Promise<void>;
+      static ffmpegExecute(session: FFmpegSession): Promise<void>;
 
-    static asyncFFmpegExecute(session: FFmpegSession): Promise<void>;
+      static ffprobeExecute(session: FFprobeSession): Promise<void>;
 
-    static asyncFFprobeExecute(session: FFprobeSession): Promise<void>;
+      static getMediaInformationExecute(session: MediaInformationSession, waitTimeout?: number): Promise<void>;
 
-    static asyncGetMediaInformationExecute(session: MediaInformationSession, waitTimeout?: number): Promise<void>;
+      static asyncFFmpegExecute(session: FFmpegSession): Promise<void>;
 
-    static enableLogCallback(logCallback: LogCallback): void;
+      static asyncFFprobeExecute(session: FFprobeSession): Promise<void>;
 
-    static enableStatisticsCallback(statisticsCallback: StatisticsCallback): void;
+      static asyncGetMediaInformationExecute(session: MediaInformationSession, waitTimeout?: number): Promise<void>;
 
-    static enableFFmpegSessionCompleteCallback(completeCallback: FFmpegSessionCompleteCallback): void;
+      static enableLogCallback(logCallback: LogCallback): void;
 
-    static getFFmpegSessionCompleteCallback(): FFmpegSessionCompleteCallback;
+      static enableStatisticsCallback(statisticsCallback: StatisticsCallback): void;
 
-    static enableFFprobeSessionCompleteCallback(completeCallback: FFprobeSessionCompleteCallback): void;
+      static enableFFmpegSessionCompleteCallback(completeCallback: FFmpegSessionCompleteCallback): void;
 
-    static getFFprobeSessionCompleteCallback(): FFprobeSessionCompleteCallback;
+      static getFFmpegSessionCompleteCallback(): FFmpegSessionCompleteCallback;
 
-    static enableMediaInformationSessionCompleteCallback(completeCallback: MediaInformationSessionCompleteCallback): void;
+      static enableFFprobeSessionCompleteCallback(completeCallback: FFprobeSessionCompleteCallback): void;
 
-    static getMediaInformationSessionCompleteCallback(): MediaInformationSessionCompleteCallback;
+      static getFFprobeSessionCompleteCallback(): FFprobeSessionCompleteCallback;
 
-    static getLogLevel(): Level;
+      static enableMediaInformationSessionCompleteCallback(completeCallback: MediaInformationSessionCompleteCallback): void;
 
-    static setLogLevel(level: Level): Promise<void>;
+      static getMediaInformationSessionCompleteCallback(): MediaInformationSessionCompleteCallback;
 
-    static getSafParameterForRead(uriString: String, reusable?: boolean): Promise<string>;
+      static getLogLevel(): Level;
 
-    static getSafParameterForWrite(uriString: String, reusable?: boolean): Promise<string>;
+      static setLogLevel(level: Level): Promise<void>;
 
-    static getSafParameter(uriString: String, openMode: String, reusable?: boolean): Promise<string>;
+      static getSafParameterForRead(uriString: String, reusable?: boolean): Promise<string>;
 
-    static unregisterSafProtocolUrl(safUrl: String): Promise<void>;
+      static getSafParameterForWrite(uriString: String, reusable?: boolean): Promise<string>;
 
-    static getSupportedCameraIds(): Promise<string[]>;
+      static getSafParameter(uriString: String, openMode: String, reusable?: boolean): Promise<string>;
 
-    static getSessionHistorySize(): Promise<number>;
+      static unregisterSafProtocolUrl(safUrl: String): Promise<void>;
 
-    static setSessionHistorySize(sessionHistorySize: number): Promise<void>;
+      static getSupportedCameraIds(): Promise<string[]>;
 
-    static getSession(sessionId: number): Promise<Session>;
+      static getSessionHistorySize(): Promise<number>;
 
-    static getLastSession(): Promise<Session>;
+      static setSessionHistorySize(sessionHistorySize: number): Promise<void>;
 
-    static getLastCompletedSession(): Promise<Session>;
+      static getSession(sessionId: number): Promise<Session>;
 
-    static getSessions(): Promise<Session[]>;
+      static getLastSession(): Promise<Session>;
 
-    static clearSessions(): Promise<void>;
+      static getLastCompletedSession(): Promise<Session>;
 
-    static deleteSession(sessionId: number): Promise<void>;
+      static getSessions(): Promise<Session[]>;
 
-    static getFFmpegSessions(): Promise<FFmpegSession[]>;
+      static clearSessions(): Promise<void>;
 
-    static getFFprobeSessions(): Promise<FFprobeSession[]>;
+      static deleteSession(sessionId: number): Promise<void>;
 
-    static getMediaInformationSessions(): Promise<MediaInformationSession[]>;
+      static getFFmpegSessions(): Promise<FFmpegSession[]>;
 
-    static getSessionsByState(state): Promise<Session[]>;
+      static getFFprobeSessions(): Promise<FFprobeSession[]>;
 
-    static getLogRedirectionStrategy(): LogRedirectionStrategy;
+      static getMediaInformationSessions(): Promise<MediaInformationSession[]>;
 
-    static setLogRedirectionStrategy(logRedirectionStrategy: LogRedirectionStrategy);
+      static getSessionsByState(state): Promise<Session[]>;
 
-    static messagesInTransmit(sessionId: number): Promise<number>;
+      static getLogRedirectionStrategy(): LogRedirectionStrategy;
 
-    static sessionStateToString(state): string;
+      static setLogRedirectionStrategy(logRedirectionStrategy: LogRedirectionStrategy);
 
-    static parseArguments(command: string): string[];
+      static messagesInTransmit(sessionId: number): Promise<number>;
 
-    static argumentsToString(commandArguments: string[]): string;
+      static sessionStateToString(state): string;
 
-    static enableLogs(): Promise<void>;
+      static parseArguments(command: string): string[];
 
-    static disableLogs(): Promise<void>;
+      static argumentsToString(commandArguments: string[]): string;
 
-    static enableStatistics(): Promise<void>;
+      static enableLogs(): Promise<void>;
 
-    static disableStatistics(): Promise<void>;
+      static disableLogs(): Promise<void>;
 
-    static getPlatform(): Promise<string>;
+      static enableStatistics(): Promise<void>;
 
-    static writeToPipe(inputPath: string, pipePath: string): Promise<number>;
+      static disableStatistics(): Promise<void>;
 
-    static selectDocumentForRead(type?: string, extraTypes?: string[]): Promise<string>;
+      static getPlatform(): Promise<string>;
 
-    static selectDocumentForWrite(title?: string, type?: string, extraTypes?: string[]): Promise<string>;
+      static writeToPipe(inputPath: string, pipePath: string): Promise<number>;
+
+      static selectDocumentForRead(type?: string, extraTypes?: string[]): Promise<string>;
+
+      static selectDocumentForWrite(title?: string, type?: string, extraTypes?: string[]): Promise<string>;
 
   }
 
@@ -307,11 +316,11 @@ declare module 'ffmpeg-kit-next-react-native' {
 
     static getMediaInformationFromCommandArguments(commandArguments: string[], waitTimeout?: number): Promise<MediaInformationSession>;
 
-    static getMediaInformationAsync(path: string, completeCallback?: FFprobeSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
+    static getMediaInformationAsync(path: string, completeCallback?: MediaInformationSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
 
-    static getMediaInformationFromCommandAsync(command: string, completeCallback?: FFprobeSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
+    static getMediaInformationFromCommandAsync(command: string, completeCallback?: MediaInformationSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
 
-    static getMediaInformationFromCommandArgumentsAsync(commandArguments: string[], completeCallback?: FFprobeSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
+    static getMediaInformationFromCommandArgumentsAsync(commandArguments: string[], completeCallback?: MediaInformationSessionCompleteCallback, logCallback?: LogCallback, waitTimeout?: number): Promise<MediaInformationSession>;
 
     static listFFprobeSessions(): Promise<FFprobeSession[]>;
 
@@ -434,7 +443,11 @@ declare module 'ffmpeg-kit-next-react-native' {
 
     static create(argumentsArray: Array<string>, completeCallback?: MediaInformationSessionCompleteCallback, logCallback?: LogCallback): Promise<MediaInformationSession>;
 
-    getMediaInformation(): MediaInformation;
+    /**
+     * Returns extracted media information, or undefined while it is unavailable,
+     * if the command failed, or if its output could not be parsed.
+     */
+    getMediaInformation(): MediaInformation | undefined;
 
     setMediaInformation(mediaInformation: MediaInformation): void;
 

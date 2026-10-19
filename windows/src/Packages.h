@@ -55,8 +55,7 @@ class Packages {
         }
         const size_t size = ffk_string_list_size(list);
         for (size_t index = 0; index < size; index++) {
-            result->insert(ffmpegkit::detail::takeString(
-                ffk_string_list_get(list, index)));
+            result->insert(ffmpegkit::detail::takeString(ffk_string_list_get(list, index)));
         }
         ffk_string_list_free(list);
         return result;

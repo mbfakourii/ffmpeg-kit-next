@@ -32,8 +32,7 @@ namespace ffmpegkit {
  *
  * @param log log entry
  */
-typedef std::function<void(const std::shared_ptr<ffmpegkit::Log> log)>
-    LogCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::Log> log)> LogCallback;
 
 } // namespace ffmpegkit
 

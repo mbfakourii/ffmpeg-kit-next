@@ -32,9 +32,7 @@ class MediaInformationSession;
  * <p>Callback invoked when an asynchronous <code>MediaInformation</code> session ends
  * running. It runs on the asynchronous worker thread.
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::MediaInformationSession> session)>
-    MediaInformationSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::MediaInformationSession> session)> MediaInformationSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

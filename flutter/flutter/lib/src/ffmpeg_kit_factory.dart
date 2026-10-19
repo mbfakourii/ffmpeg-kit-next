@@ -40,6 +40,21 @@ final statisticsCallbackMap = new Map<int, StatisticsCallback>();
 final logRedirectionStrategyMap = new Map<int, LogRedirectionStrategy>();
 
 class FFmpegKitFactory {
+  static bool _callbacksDisabled = false;
+  static bool get callbacksDisabled => _callbacksDisabled;
+
+  // Keep the channel alive for native results and retained-session getters,
+  // while releasing Dart callback closures independently of native history.
+  static void beginShutdown() {
+    _callbacksDisabled = true;
+    deleteSessions();
+    _logCallback = null;
+    _statisticsCallback = null;
+    _ffmpegSessionCompleteCallback = null;
+    _ffprobeSessionCompleteCallback = null;
+    _mediaInformationSessionCompleteCallback = null;
+  }
+
   static LogCallback? _logCallback;
   static StatisticsCallback? _statisticsCallback;
   static FFmpegSessionCompleteCallback? _ffmpegSessionCompleteCallback;
@@ -99,14 +114,16 @@ class FFmpegKitFactory {
     }
   }
 
-  static String getVersion() => "9.0.0";
+  static String getVersion() => "9.0.1";
 
   static LogRedirectionStrategy? getLogRedirectionStrategy(int? sessionId) =>
       logRedirectionStrategyMap[sessionId];
 
   static void setLogRedirectionStrategy(
       int? sessionId, LogRedirectionStrategy? logRedirectionStrategy) {
-    if (sessionId != null && logRedirectionStrategy != null) {
+    if (!callbacksDisabled &&
+        sessionId != null &&
+        logRedirectionStrategy != null) {
       logRedirectionStrategyMap[sessionId] = logRedirectionStrategy;
     }
   }
@@ -135,7 +152,7 @@ class FFmpegKitFactory {
       logCallbackMap[sessionId];
 
   static void setLogCallback(int? sessionId, LogCallback? logCallback) {
-    if (sessionId != null && logCallback != null) {
+    if (!callbacksDisabled && sessionId != null && logCallback != null) {
       logCallbackMap[sessionId] = logCallback;
     }
   }
@@ -143,7 +160,7 @@ class FFmpegKitFactory {
   static LogCallback? getGlobalLogCallback() => _logCallback;
 
   static void setGlobalLogCallback(LogCallback? logCallback) {
-    _logCallback = logCallback;
+    _logCallback = callbacksDisabled ? null : logCallback;
   }
 
   static StatisticsCallback? getStatisticsCallback(int? sessionId) =>
@@ -151,7 +168,7 @@ class FFmpegKitFactory {
 
   static void setStatisticsCallback(
       int? sessionId, StatisticsCallback? statisticsCallback) {
-    if (sessionId != null && statisticsCallback != null) {
+    if (!callbacksDisabled && sessionId != null && statisticsCallback != null) {
       statisticsCallbackMap[sessionId] = statisticsCallback;
     }
   }
@@ -161,7 +178,7 @@ class FFmpegKitFactory {
 
   static void setGlobalStatisticsCallback(
       StatisticsCallback? statisticsCallback) {
-    _statisticsCallback = statisticsCallback;
+    _statisticsCallback = callbacksDisabled ? null : statisticsCallback;
   }
 
   static FFmpegSessionCompleteCallback? getFFmpegSessionCompleteCallback(
@@ -170,7 +187,7 @@ class FFmpegKitFactory {
 
   static void setFFmpegSessionCompleteCallback(
       int? sessionId, FFmpegSessionCompleteCallback? completeCallback) {
-    if (sessionId != null && completeCallback != null) {
+    if (!callbacksDisabled && sessionId != null && completeCallback != null) {
       ffmpegSessionCompleteCallbackMap[sessionId] = completeCallback;
     }
   }
@@ -181,7 +198,8 @@ class FFmpegKitFactory {
 
   static void setGlobalFFmpegSessionCompleteCallback(
       FFmpegSessionCompleteCallback? completeCallback) {
-    _ffmpegSessionCompleteCallback = completeCallback;
+    _ffmpegSessionCompleteCallback =
+        callbacksDisabled ? null : completeCallback;
   }
 
   static FFprobeSessionCompleteCallback? getFFprobeSessionCompleteCallback(
@@ -190,7 +208,7 @@ class FFmpegKitFactory {
 
   static void setFFprobeSessionCompleteCallback(
       int? sessionId, FFprobeSessionCompleteCallback? completeCallback) {
-    if (sessionId != null && completeCallback != null) {
+    if (!callbacksDisabled && sessionId != null && completeCallback != null) {
       ffprobeSessionCompleteCallbackMap[sessionId] = completeCallback;
     }
   }
@@ -201,7 +219,8 @@ class FFmpegKitFactory {
 
   static void setGlobalFFprobeSessionCompleteCallback(
       FFprobeSessionCompleteCallback? completeCallback) {
-    _ffprobeSessionCompleteCallback = completeCallback;
+    _ffprobeSessionCompleteCallback =
+        callbacksDisabled ? null : completeCallback;
   }
 
   static MediaInformationSessionCompleteCallback?
@@ -210,7 +229,7 @@ class FFmpegKitFactory {
 
   static void setMediaInformationSessionCompleteCallback(int? sessionId,
       MediaInformationSessionCompleteCallback? completeCallback) {
-    if (sessionId != null && completeCallback != null) {
+    if (!callbacksDisabled && sessionId != null && completeCallback != null) {
       mediaInformationSessionCompleteCallbackMap[sessionId] = completeCallback;
     }
   }
@@ -221,7 +240,8 @@ class FFmpegKitFactory {
 
   static void setGlobalMediaInformationSessionCompleteCallback(
       MediaInformationSessionCompleteCallback? completeCallback) {
-    _mediaInformationSessionCompleteCallback = completeCallback;
+    _mediaInformationSessionCompleteCallback =
+        callbacksDisabled ? null : completeCallback;
   }
 
   static DateTime? validDate(int? time) {

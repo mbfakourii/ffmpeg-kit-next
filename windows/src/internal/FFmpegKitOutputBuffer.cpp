@@ -24,36 +24,24 @@
 
 static const long DefaultInitialCapacity = 4096;
 
-std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer>
-ffmpegkit::internal::FFmpegKitOutputBuffer::create(const std::string &extension) {
-    return ffmpegkit::internal::FFmpegKitOutputBuffer::create(
-        extension, DefaultInitialCapacity, 0);
-}
+std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer> ffmpegkit::internal::FFmpegKitOutputBuffer::create(const std::string &extension) { return ffmpegkit::internal::FFmpegKitOutputBuffer::create(extension, DefaultInitialCapacity, 0); }
 
-std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer>
-ffmpegkit::internal::FFmpegKitOutputBuffer::create(const std::string &extension,
-                                         const long initialCapacity,
-                                         const long maxCapacity) {
+std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer> ffmpegkit::internal::FFmpegKitOutputBuffer::create(const std::string &extension, const long initialCapacity, const long maxCapacity) {
     if (initialCapacity < 0 || maxCapacity < 0) {
         throw std::invalid_argument("capacities must not be negative");
     }
 
-    long id = ffmpegkit::internal::FFmpegKitConfig::registerFFmpegKitOutputBuffer(
-        initialCapacity, maxCapacity);
+    long id = ffmpegkit::internal::FFmpegKitConfig::registerFFmpegKitOutputBuffer(initialCapacity, maxCapacity);
     if (id == 0) {
         throw std::runtime_error("Failed to register FFmpegKit output buffer.");
     }
 
-    return std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer>(
-        new ffmpegkit::internal::FFmpegKitOutputBuffer(id, extension));
+    return std::shared_ptr<ffmpegkit::internal::FFmpegKitOutputBuffer>(new ffmpegkit::internal::FFmpegKitOutputBuffer(id, extension));
 }
 
 ffmpegkit::internal::FFmpegKitOutputBuffer::~FFmpegKitOutputBuffer() { close(); }
 
-ffmpegkit::internal::FFmpegKitOutputBuffer::FFmpegKitOutputBuffer(
-    const long id, const std::string &extension)
-    : _id{id}, _url{ffmpegkit::internal::buildFFmpegKitUrl("ffkitmem", id, extension)},
-      _closed{false} {}
+ffmpegkit::internal::FFmpegKitOutputBuffer::FFmpegKitOutputBuffer(const long id, const std::string &extension) : _id{id}, _url{ffmpegkit::internal::buildFFmpegKitUrl("ffkitmem", id, extension)}, _closed{false} {}
 
 std::string ffmpegkit::internal::FFmpegKitOutputBuffer::getUrl() {
     ensureOpen();
@@ -65,8 +53,7 @@ long ffmpegkit::internal::FFmpegKitOutputBuffer::getSize() {
     return ffmpegkit::internal::FFmpegKitConfig::getFFmpegKitBufferSize(_id);
 }
 
-std::shared_ptr<std::vector<uint8_t>>
-ffmpegkit::internal::FFmpegKitOutputBuffer::toByteArray() {
+std::shared_ptr<std::vector<uint8_t>> ffmpegkit::internal::FFmpegKitOutputBuffer::toByteArray() {
     ensureOpen();
     auto output = ffmpegkit::internal::FFmpegKitConfig::getFFmpegKitOutputBuffer(_id);
     if (output == nullptr) {

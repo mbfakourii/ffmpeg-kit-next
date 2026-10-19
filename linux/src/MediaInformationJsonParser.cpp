@@ -57,33 +57,25 @@ ffmpegkit::json::Value toJsonValue(const rapidjson::Value &source) {
     case rapidjson::kTrueType:
         return ffmpegkit::json::Value(true);
     case rapidjson::kStringType:
-        return ffmpegkit::json::Value(
-            std::string(source.GetString(), source.GetStringLength()));
+        return ffmpegkit::json::Value(std::string(source.GetString(), source.GetStringLength()));
     case rapidjson::kNumberType:
         if (source.IsInt64()) {
             return ffmpegkit::json::Value(source.GetInt64());
-        } else if (source.IsUint64() &&
-                   source.GetUint64() <=
-                       static_cast<uint64_t>(INT64_MAX)) {
-            return ffmpegkit::json::Value(
-                static_cast<int64_t>(source.GetUint64()));
+        } else if (source.IsUint64() && source.GetUint64() <= static_cast<uint64_t>(INT64_MAX)) {
+            return ffmpegkit::json::Value(static_cast<int64_t>(source.GetUint64()));
         } else {
             return ffmpegkit::json::Value(source.GetDouble());
         }
     case rapidjson::kObjectType: {
         auto object = ffmpegkit::json::Value::makeObject();
-        for (auto member = source.MemberBegin(); member != source.MemberEnd();
-             ++member) {
-            object.set(std::string(member->name.GetString(),
-                                   member->name.GetStringLength()),
-                       toJsonValue(member->value));
+        for (auto member = source.MemberBegin(); member != source.MemberEnd(); ++member) {
+            object.set(std::string(member->name.GetString(), member->name.GetStringLength()), toJsonValue(member->value));
         }
         return object;
     }
     case rapidjson::kArrayType: {
         auto array = ffmpegkit::json::Value::makeArray();
-        for (auto element = source.Begin(); element != source.End();
-             ++element) {
+        for (auto element = source.Begin(); element != source.End(); ++element) {
             array.append(toJsonValue(*element));
         }
         return array;
@@ -96,64 +88,48 @@ ffmpegkit::json::Value toJsonValue(const rapidjson::Value &source) {
 
 } // namespace
 
-std::shared_ptr<ffmpegkit::MediaInformation>
-ffmpegkit::MediaInformationJsonParser::from(
-    const std::string &ffprobeJsonOutput) {
+std::shared_ptr<ffmpegkit::MediaInformation> ffmpegkit::MediaInformationJsonParser::from(const std::string &ffprobeJsonOutput) {
     try {
         return fromWithError(ffprobeJsonOutput);
     } catch (const std::exception &exception) {
-        std::cout << "MediaInformation parsing failed: " << exception.what()
-                  << std::endl;
+        std::cout << "MediaInformation parsing failed: " << exception.what() << std::endl;
         return nullptr;
     }
 }
 
-std::shared_ptr<ffmpegkit::MediaInformation>
-ffmpegkit::MediaInformationJsonParser::fromWithError(
-    const std::string &ffprobeJsonOutput) {
-    std::shared_ptr<rapidjson::Document> document =
-        std::make_shared<rapidjson::Document>();
+std::shared_ptr<ffmpegkit::MediaInformation> ffmpegkit::MediaInformationJsonParser::fromWithError(const std::string &ffprobeJsonOutput) {
+    std::shared_ptr<rapidjson::Document> document = std::make_shared<rapidjson::Document>();
 
     document->Parse(ffprobeJsonOutput.c_str());
 
     if (document->HasParseError()) {
         throw std::runtime_error(GetParseError_En(document->GetParseError()));
+    } else if (!document->IsObject()) {
+        // Checked here rather than left to the rapidjson assertion that
+        // HasMember() raises, so the message says what is wrong, as on Apple
+        throw std::runtime_error("The top-level JSON value is not an object.");
     } else {
-        std::shared_ptr<
-            std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>
-            streams = std::make_shared<
-                std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>();
-        std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>
-            chapters = std::make_shared<
-                std::vector<std::shared_ptr<ffmpegkit::Chapter>>>();
+        std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>> streams = std::make_shared<std::vector<std::shared_ptr<ffmpegkit::StreamInformation>>>();
+        std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>> chapters = std::make_shared<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>();
 
         if (document->HasMember(MediaInformationJsonParserKeyStreams)) {
-            const rapidjson::Value &streamArray =
-                (*document.get())[MediaInformationJsonParserKeyStreams];
+            const rapidjson::Value &streamArray = (*document.get())[MediaInformationJsonParserKeyStreams];
             if (streamArray.IsArray()) {
                 for (rapidjson::SizeType i = 0; i < streamArray.Size(); i++) {
-                    streams->push_back(
-                        std::make_shared<ffmpegkit::StreamInformation>(
-                            std::make_shared<ffmpegkit::json::Value>(
-                                toJsonValue(streamArray[i]))));
+                    streams->push_back(std::make_shared<ffmpegkit::StreamInformation>(std::make_shared<ffmpegkit::json::Value>(toJsonValue(streamArray[i]))));
                 }
             }
         }
 
         if (document->HasMember(MediaInformationJsonParserKeyChapters)) {
-            const rapidjson::Value &chapterArray =
-                (*document.get())[MediaInformationJsonParserKeyChapters];
+            const rapidjson::Value &chapterArray = (*document.get())[MediaInformationJsonParserKeyChapters];
             if (chapterArray.IsArray()) {
                 for (rapidjson::SizeType i = 0; i < chapterArray.Size(); i++) {
-                    chapters->push_back(std::make_shared<ffmpegkit::Chapter>(
-                        std::make_shared<ffmpegkit::json::Value>(
-                            toJsonValue(chapterArray[i]))));
+                    chapters->push_back(std::make_shared<ffmpegkit::Chapter>(std::make_shared<ffmpegkit::json::Value>(toJsonValue(chapterArray[i]))));
                 }
             }
         }
 
-        return std::make_shared<ffmpegkit::MediaInformation>(
-            std::make_shared<ffmpegkit::json::Value>(toJsonValue(*document)),
-            streams, chapters);
+        return std::make_shared<ffmpegkit::MediaInformation>(std::make_shared<ffmpegkit::json::Value>(toJsonValue(*document)), streams, chapters);
     }
 }

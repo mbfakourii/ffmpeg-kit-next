@@ -50,7 +50,8 @@ class FFmpegKitStreamInput {
   /// Writes [data] to the stream, blocking up to [timeoutMs] milliseconds when
   /// the native buffer is full. Returns the number of bytes accepted.
   Future<int> write(Uint8List data, {int? timeoutMs}) async =>
-      (await FFmpegKitPlatform.instance.streamInputWrite(_url, data, timeoutMs)) ??
+      (await FFmpegKitPlatform.instance
+          .streamInputWrite(_url, data, timeoutMs)) ??
       0;
 
   /// Signals that no more data will be written, letting FFmpeg reach

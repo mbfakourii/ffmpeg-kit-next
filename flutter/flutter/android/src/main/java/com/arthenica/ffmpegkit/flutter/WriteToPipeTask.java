@@ -26,6 +26,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.flutter.plugin.common.MethodChannel;
 
@@ -34,6 +36,8 @@ public class WriteToPipeTask implements Runnable {
     private final String namedPipePath;
     private final FFmpegKitFlutterMethodResultHandler resultHandler;
     private final MethodChannel.Result result;
+    private final AtomicBoolean cancelled = new AtomicBoolean();
+    private final AtomicReference<Process> activeProcess = new AtomicReference<>();
 
     public WriteToPipeTask(@NonNull final String inputPath, @NonNull final String namedPipePath, @NonNull final FFmpegKitFlutterMethodResultHandler resultHandler, @NonNull final MethodChannel.Result result) {
         this.inputPath = inputPath;
@@ -47,12 +51,20 @@ public class WriteToPipeTask implements Runnable {
         final int rc;
 
         try {
-            final String asyncCommand = "cat " + inputPath + " > " + namedPipePath;
+            if (cancelled.get()) {
+                resultHandler.errorAsync(result, "PLUGIN_SHUTDOWN", "The Flutter plugin has been detached.");
+                return;
+            }
             Log.d(LIBRARY_NAME, String.format("Starting copy %s to pipe %s operation.", inputPath, namedPipePath));
 
             final long startTime = System.currentTimeMillis();
 
-            final Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", asyncCommand});
+            // exec keeps the shell and cat in one process, including while the
+            // shell waits for a FIFO reader. Pass paths as arguments.
+            final Process process = Runtime.getRuntime().exec(new String[] {"sh", "-c", "exec cat \"$1\" > \"$2\"", "ffmpeg-kit-flutter", inputPath, namedPipePath});
+            activeProcess.set(process);
+            if (cancelled.get())
+                process.destroy();
             rc = process.waitFor();
 
             final long endTime = System.currentTimeMillis();
@@ -62,9 +74,21 @@ public class WriteToPipeTask implements Runnable {
             resultHandler.successAsync(result, rc);
 
         } catch (final IOException | InterruptedException e) {
+            if (e instanceof InterruptedException)
+                Thread.currentThread().interrupt();
             Log.e(LIBRARY_NAME, String.format("Copy %s to pipe %s failed with error.", inputPath, namedPipePath), e);
             resultHandler.errorAsync(result, "WRITE_TO_PIPE_FAILED", e.getMessage());
+        } finally {
+            final Process process = activeProcess.getAndSet(null);
+            if (process != null)
+                process.destroy();
         }
     }
 
+    void cancel() {
+        cancelled.set(true);
+        final Process process = activeProcess.get();
+        if (process != null)
+            process.destroy();
+    }
 }

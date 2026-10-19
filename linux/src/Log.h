@@ -30,8 +30,7 @@ namespace ffmpegkit {
  */
 class Log {
   public:
-    Log(const long sessionId, const ffmpegkit::Level level,
-        const char *message);
+    Log(const long sessionId, const ffmpegkit::Level level, const char *message);
     long getSessionId() const;
     ffmpegkit::Level getLevel() const;
     std::string getMessage() const;

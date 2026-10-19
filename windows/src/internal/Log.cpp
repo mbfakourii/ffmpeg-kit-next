@@ -19,9 +19,7 @@
 
 #include "Log.h"
 
-ffmpegkit::internal::Log::Log(const long sessionId, const ffmpegkit::internal::Level level,
-                    const char *message)
-    : _sessionId{sessionId}, _level{level}, _message{message} {}
+ffmpegkit::internal::Log::Log(const long sessionId, const ffmpegkit::internal::Level level, const char *message) : _sessionId{sessionId}, _level{level}, _message{message} {}
 
 long ffmpegkit::internal::Log::getSessionId() const { return _sessionId; }
 

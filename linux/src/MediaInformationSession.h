@@ -38,8 +38,7 @@ class MediaInformationSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments);
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments);
 
     /**
      * Creates a new media information session.
@@ -48,9 +47,7 @@ class MediaInformationSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::MediaInformationSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments, ffmpegkit::MediaInformationSessionCompleteCallback completeCallback);
 
     /**
      * Creates a new media information session.
@@ -60,10 +57,7 @@ class MediaInformationSession : public AbstractSession {
      * @param logCallback      session specific log callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::MediaInformationSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::MediaInformationSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback);
+    static std::shared_ptr<ffmpegkit::MediaInformationSession> create(const std::list<std::string> &arguments, ffmpegkit::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback);
 
     /**
      * Returns the media information extracted in this session.
@@ -78,8 +72,7 @@ class MediaInformationSession : public AbstractSession {
      *
      * @param mediaInformation media information extracted
      */
-    void setMediaInformation(
-        const std::shared_ptr<ffmpegkit::MediaInformation> mediaInformation);
+    void setMediaInformation(const std::shared_ptr<ffmpegkit::MediaInformation> mediaInformation);
 
     /**
      * Returns the session specific complete callback.
@@ -120,10 +113,7 @@ class MediaInformationSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @param logCallback      session specific log callback
      */
-    MediaInformationSession(
-        const std::list<std::string> &arguments,
-        ffmpegkit::MediaInformationSessionCompleteCallback completeCallback,
-        ffmpegkit::LogCallback logCallback);
+    MediaInformationSession(const std::list<std::string> &arguments, ffmpegkit::MediaInformationSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback);
 
     ffmpegkit::MediaInformationSessionCompleteCallback _completeCallback;
     std::shared_ptr<ffmpegkit::MediaInformation> _mediaInformation;

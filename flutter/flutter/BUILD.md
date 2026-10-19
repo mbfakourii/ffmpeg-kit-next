@@ -45,15 +45,22 @@ copies them. Re-run `copy_local_binaries.sh` whenever you rebuild.
 
 On Android the copy is a small local Maven repository at
 `android/libs-maven/com/arthenica/ffmpeg-kit-next/<version>/` (e.g.
-`ffmpeg-kit-next-6.1.2.aar` plus its `.pom`). `android/build.gradle` consumes it via
-`maven { url "$projectDir/libs-maven" }` and depends on it by Maven coordinate
-`implementation 'com.arthenica:ffmpeg-kit-next:<version>'` (no longer the
-`flatDir` + `implementation(name: 'ffmpeg-kit-next', ext: 'aar')` form).
+`ffmpeg-kit-next-<version>.aar` plus its `.pom`). `android/build.gradle` reads the
+version from that POM and uses a strict Maven dependency on it. The copy must
+contain exactly one native version and its matching AAR; missing, incomplete,
+or ambiguous copies fail during configuration. The native version is independent
+of the Flutter package version, and neither needs to be edited into Gradle.
+
+Linux and Windows consume the copied headers and native libraries without a
+release-number requirement. Linux checks for the required headers and shared
+libraries; Windows keeps its CMake imported targets and x64 checks. Rebuild and
+copy the native bundle whenever its sources change.
 
 The Apple plugins ship both a CocoaPods podspec and a Swift Package Manager
 `Package.swift` (under `<platform>/ffmpeg_kit_next_flutter/`). Flutter uses the
 Swift package when Swift Package Manager is enabled and falls back to the podspec
 otherwise; both reference the same `Sources/` and `Frameworks/` trees.
+Both podspecs read the Flutter package version from `pubspec.yaml`.
 
 ## Consuming the plugin from an app
 
@@ -118,8 +125,15 @@ allprojects {
         mavenCentral()
         def ffmpegKitProject = rootProject.findProject(":ffmpeg_kit_next_flutter")
         if (ffmpegKitProject != null) {
-            maven {
-                url "${ffmpegKitProject.projectDir}/libs-maven"
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url "${ffmpegKitProject.projectDir}/libs-maven"
+                    }
+                }
+                filter {
+                    includeModule('com.arthenica', 'ffmpeg-kit-next')
+                }
             }
         }
     }
@@ -129,6 +143,12 @@ allprojects {
 `ffmpegKitProject.projectDir` is the plugin's `android/` folder wherever Flutter
 resolved the dependency (local path, pub cache, …), so the same snippet works for
 any consumer without editing.
+
+The `exclusiveContent` rule reserves `com.arthenica:ffmpeg-kit-next` for this
+local repository, including while resolving the app's runtime dependencies.
+The plugin's strict dependency selects the version recorded in the copied POM;
+an incompatible version request fails instead of silently upgrading it. Other
+dependencies continue to resolve from their normal repositories.
 
 Keep this in `build.gradle` (project-level). Do **not** move it into
 `settings.gradle`'s `dependencyResolutionManagement` with
@@ -143,10 +163,10 @@ via the podspec / Swift package.
   ABIs compiled by your nix profile, and the Apple xcframeworks only the
   built slices. If the AAR lacks an ABI your build targets (e.g. `x86_64` for an
   emulator), restrict the app with `ndk { abiFilters ... }` or build that ABI.
-- **`smart-exception-java` is still fetched from Maven Central.** It is a small
-  pure-Java dependency of the AAR (not a native binary), declared in the AAR's POM
-  inside `android/libs-maven` and resolved transitively (`android/build.gradle`
-  keeps `mavenCentral()` for this). If you must avoid Maven entirely, vendor it as
-  a local jar instead.
+- **`smart-exception-java` and `kotlin-stdlib` are still fetched from Maven
+  Central.** They are JVM dependencies of the AAR (not native binaries), declared
+  in the AAR's POM inside `android/libs-maven` and resolved transitively
+  (`android/build.gradle` keeps `mavenCentral()` for this). If you must avoid
+  Maven entirely, vendor them as local jars instead.
 - **External libraries are fixed by what you enabled.** They are determined by
   the flags passed to `nix-<platform>.sh`.

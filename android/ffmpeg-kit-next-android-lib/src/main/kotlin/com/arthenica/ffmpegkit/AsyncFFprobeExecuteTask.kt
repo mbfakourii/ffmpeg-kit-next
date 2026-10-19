@@ -23,30 +23,70 @@ import com.arthenica.smartexception.java.Exceptions
 
 /**
  * <p>Executes an FFprobe session asynchronously.
+ *
+ * <p>The task claims its session when its executor runs it. Claimed before shutdown, the session
+ * runs; claimed during shutdown grace, it fails with the reason "FFmpegKit has been shut down"
+ * without native execution and its completion callbacks may still run; claimed later, it fails
+ * and its completion callbacks are dropped. The task releases its session before the execution
+ * stops being counted, so an executor that keeps the task does not keep the session.
  */
-open class AsyncFFprobeExecuteTask(private val ffprobeSession: FFprobeSession) : Runnable {
+open class AsyncFFprobeExecuteTask(ffprobeSession: FFprobeSession) : Runnable {
 
-    private val completeCallback: FFprobeSessionCompleteCallback? = ffprobeSession.getCompleteCallback()
+    /** Moved out when the task runs, so an executor that keeps the task does not keep the session. */
+    private var ffprobeSession: FFprobeSession? = ffprobeSession
+
+    /** Set when FFmpegKitConfig counted this task as queued when it submitted it. */
+    internal var queued = false
 
     override fun run() {
-        FFmpegKitConfig.ffprobeExecute(ffprobeSession)
+        val state = LibraryState.claim(queued)
+        try {
+            runClaimed(state)
+        } finally {
+            if (state != LibraryState.TERMINATED) {
+                LibraryState.endExecution()
+            }
+        }
+    }
 
-        if (completeCallback != null) {
+    /** Runs or rejects the claimed session; the session is released when this returns. */
+    private fun runClaimed(state: Int) {
+        val session = ffprobeSession ?: return
+        ffprobeSession = null
+
+        if (state == LibraryState.RUNNING) {
+            FFmpegKitConfig.runFFprobeSession(session)
+        } else {
+            LibraryState.reject(session)
+        }
+        if (state != LibraryState.TERMINATED) {
+            notifyComplete(session)
+        }
+    }
+
+    /** Calls the session's complete callback, then the global one, each admitted separately. */
+    private fun notifyComplete(session: FFprobeSession) {
+        val completeCallback = session.getCompleteCallback()
+        if (completeCallback != null && LibraryState.beginCallback(true)) {
             try {
                 // NOTIFY SESSION CALLBACK DEFINED
-                completeCallback.apply(ffprobeSession)
+                completeCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside session complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
 
         val globalFFprobeSessionCompleteCallback = FFmpegKitConfig.getFFprobeSessionCompleteCallback()
-        if (globalFFprobeSessionCompleteCallback != null) {
+        if (globalFFprobeSessionCompleteCallback != null && LibraryState.beginCallback(true)) {
             try {
                 // NOTIFY GLOBAL CALLBACK DEFINED
-                globalFFprobeSessionCompleteCallback.apply(ffprobeSession)
+                globalFFprobeSessionCompleteCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside global complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
     }

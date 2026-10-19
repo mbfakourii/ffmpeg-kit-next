@@ -32,9 +32,7 @@ class FFprobeSession;
  * <p>Callback invoked when an asynchronous <code>FFprobe</code> session ends
  * running. It runs on the asynchronous worker thread.
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::FFprobeSession> session)>
-    FFprobeSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::FFprobeSession> session)> FFprobeSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

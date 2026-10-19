@@ -38,12 +38,17 @@
 
 - (int)write:(NSData *)data timeout:(int)timeoutMs;
 
-- (int)write:(NSData *)data
-      offset:(NSUInteger)offset
-      length:(NSUInteger)length
-     timeout:(int)timeoutMs;
+- (int)write:(NSData *)data offset:(NSUInteger)offset length:(NSUInteger)length timeout:(int)timeoutMs;
 
-- (void)closeInput;
+/**
+ * Signals end of input without releasing the resource.
+ *
+ * <p>NS_SWIFT_NAME is required here. Swift's Objective-C importer drops a
+ * trailing noun that repeats the class name, so <code>closeInput</code> would
+ * otherwise be imported as <code>close()</code> and collide with
+ * <code>close</code> below, leaving both unusable from Swift.
+ */
+- (void)closeInput NS_SWIFT_NAME(closeInput());
 
 - (void)close;
 

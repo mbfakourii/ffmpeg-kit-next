@@ -40,8 +40,7 @@
  *
  * @param session session of the completed execution
  */
-typedef void (^MediaInformationSessionCompleteCallback)(
-    MediaInformationSession *session);
+typedef void (^MediaInformationSessionCompleteCallback)(MediaInformationSession *session);
 
 #import "MediaInformationSession.h"
 

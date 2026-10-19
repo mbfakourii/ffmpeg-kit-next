@@ -754,12 +754,138 @@ prefix = '$(get_native_path "${LIB_INSTALL_PREFIX}")'
 EOF
 }
 
+is_windows_pkg_config_build_directory() {
+  [[ "$1" == "$2" || "$1" == "$2/"* ]]
+}
+
+filter_windows_pkg_config_private_flags() {
+  local INPUT="$1" BUILD_ROOT="$2"
+  local RAW="" VALUE="" QUOTE="" CHAR NEXT ACTIVE=0 INDEX
+  local -a RAW_FLAGS=() FLAGS=()
+
+  # Parse shell quoting as data. Never evaluate metadata as shell commands.
+  for ((INDEX = 0; INDEX < ${#INPUT}; INDEX++)); do
+    CHAR="${INPUT:INDEX:1}"
+    if [[ -z "$QUOTE" && "$CHAR" == [[:space:]] ]]; then
+      if [[ "$ACTIVE" == 1 ]]; then
+        RAW_FLAGS+=("$RAW")
+        FLAGS+=("$VALUE")
+        RAW="" VALUE="" ACTIVE=0
+      fi
+      continue
+    fi
+    RAW+="$CHAR"
+    ACTIVE=1
+    if [[ "$QUOTE" == "'" ]]; then
+      if [[ "$CHAR" == "'" ]]; then QUOTE=""; else VALUE+="$CHAR"; fi
+    elif [[ "$CHAR" == '"' ]]; then
+      if [[ "$QUOTE" == '"' ]]; then QUOTE=""; else QUOTE='"'; fi
+    elif [[ -z "$QUOTE" && "$CHAR" == "'" ]]; then
+      QUOTE="'"
+    elif [[ "$CHAR" == '\' ]]; then
+      NEXT="${INPUT:INDEX+1:1}"
+      if [[ -z "$NEXT" ]]; then
+        printf 'error: trailing escape in Libs.private\n' >&2
+        return 1
+      fi
+      if [[ -z "$QUOTE" || "$NEXT" == [\$\`\"\\] ]]; then
+        RAW+="$NEXT"
+        VALUE+="$NEXT"
+        INDEX=$((INDEX + 1))
+      else
+        VALUE+="$CHAR"
+      fi
+    else
+      VALUE+="$CHAR"
+    fi
+  done
+  if [[ -n "$QUOTE" ]]; then
+    printf 'error: unterminated quote in Libs.private\n' >&2
+    return 1
+  fi
+  if [[ "$ACTIVE" == 1 ]]; then
+    RAW_FLAGS+=("$RAW")
+    FLAGS+=("$VALUE")
+  fi
+
+  printf 'Libs.private:'
+  for ((INDEX = 0; INDEX < ${#FLAGS[@]}; INDEX++)); do
+    VALUE="${FLAGS[INDEX]}"
+    if [[ "$VALUE" == -L && $((INDEX + 1)) -lt ${#FLAGS[@]} ]] &&
+      is_windows_pkg_config_build_directory "${FLAGS[INDEX+1]}" "$BUILD_ROOT"; then
+      INDEX=$((INDEX + 1))
+      continue
+    fi
+    if [[ "$VALUE" == -L* ]] && is_windows_pkg_config_build_directory "${VALUE:2}" "$BUILD_ROOT"; then
+      continue
+    fi
+    printf ' %s' "${RAW_FLAGS[INDEX]}"
+  done
+}
+
+rebase_windows_pkg_config_paths() {
+  local LINE="$1" BUILD_ROOT="$2" PREFIX BEFORE AFTER RESULT
+  for PREFIX in "$BUILD_ROOT/ffmpeg-kit" "$BUILD_ROOT/ffmpeg"; do
+    RESULT=""
+    while [[ "$LINE" == *"$PREFIX"* ]]; do
+      BEFORE="${LINE%%"$PREFIX"*}"
+      AFTER="${LINE#*"$PREFIX"}"
+      if [[ -z "$AFTER" || "${AFTER:0:1}" == [/[:space:]\"\'] ]]; then
+        RESULT+="$BEFORE"'${prefix}'
+      else
+        RESULT+="$BEFORE$PREFIX"
+      fi
+      LINE="$AFTER"
+    done
+    LINE="$RESULT$LINE"
+  done
+  printf '%s\n' "$LINE"
+}
+
+relocate_windows_pkg_config_file() {
+  local FILE="$1" BUILD_ROOT="$2" TEMP LINE
+  while [[ "$BUILD_ROOT" == */ && "$BUILD_ROOT" != / ]]; do BUILD_ROOT="${BUILD_ROOT%/}"; done
+  if [[ "$BUILD_ROOT" != /* && ! "$BUILD_ROOT" =~ ^[[:alpha:]]:/ ]] || [[ "$BUILD_ROOT" == / ]]; then
+    printf 'error: original build directory must be an absolute path\n' >&2
+    return 1
+  fi
+  if [[ ! -f "$FILE" ]]; then
+    printf 'error: descriptor not found: %s\n' "$FILE" >&2
+    return 1
+  fi
+  TEMP="$(mktemp "${TMPDIR:-/tmp}/ffmpeg-kit-pkgconfig.XXXXXX")" || return 1
+  if ! (
+    while IFS= read -r LINE || [[ -n "$LINE" ]]; do
+      case "$LINE" in
+      prefix=*)
+        printf '%s\n' 'prefix=${pcfiledir}/../..'
+        continue
+        ;;
+      Libs.private:*)
+        # Only shared libraries are shipped. Private search paths refer to the
+        # static build inputs; retain library flags and non-build directories.
+        LINE="$(filter_windows_pkg_config_private_flags "${LINE#Libs.private:}" "$BUILD_ROOT")" || exit 1
+        ;;
+      esac
+      rebase_windows_pkg_config_paths "$LINE" "$BUILD_ROOT"
+    done < "$FILE"
+  ) > "$TEMP"; then
+    rm -f "$TEMP"
+    return 1
+  fi
+  # Preserve the descriptor's permissions, and leave it intact on parse errors.
+  if ! cat "$TEMP" > "$FILE"; then
+    rm -f "$TEMP"
+    return 1
+  fi
+  rm -f "$TEMP"
+}
+
 install_pkg_config_file() {
   local FILE_NAME="$1"
   local SOURCE="${INSTALL_PKG_CONFIG_DIR}/${FILE_NAME}"
   local DESTINATION="${FFMPEG_KIT_BUNDLE_PKG_CONFIG_DIRECTORY}/${FILE_NAME}"
   local NATIVE_LIB_INSTALL_BASE
-  local NATIVE_BUNDLE_PREFIX
 
   # DELETE OLD FILE
   rm -f "$DESTINATION" 2>>"${BASEDIR}"/build.log
@@ -773,11 +899,10 @@ install_pkg_config_file() {
     exit 1
   fi
 
-  # UPDATE PATHS
+  # Rebase public paths and remove private search paths to static build inputs.
+  # The published bundle contains DLLs and import libraries, not static libraries.
   NATIVE_LIB_INSTALL_BASE=$(get_native_path "${LIB_INSTALL_BASE}") || return 1
-  NATIVE_BUNDLE_PREFIX=$(get_native_path "${BASEDIR}/prebuilt/$(get_bundle_directory)/ffmpeg-kit-next") || return 1
-  ${SED_INLINE} "s|${NATIVE_LIB_INSTALL_BASE}/ffmpeg-kit|${NATIVE_BUNDLE_PREFIX}|g" "$DESTINATION" 1>>"${BASEDIR}"/build.log 2>&1 || return 1
-  ${SED_INLINE} "s|${NATIVE_LIB_INSTALL_BASE}/ffmpeg|${NATIVE_BUNDLE_PREFIX}|g" "$DESTINATION" 1>>"${BASEDIR}"/build.log 2>&1 || return 1
+  relocate_windows_pkg_config_file "$DESTINATION" "$NATIVE_LIB_INSTALL_BASE" 1>>"${BASEDIR}"/build.log 2>&1 || return 1
 }
 
 create_ffmpegkit_package_config() {
@@ -806,7 +931,7 @@ Description: FFmpeg for applications
 Version: ${FFMPEGKIT_VERSION}
 
 Libs: -L\${libdir} -lffmpegkit -lavutil
-Requires: libavfilter, libswscale, libavformat, libavcodec, libswresample, libavutil
+Requires: libavdevice, libavfilter, libswscale, libavformat, libavcodec, libswresample, libavutil
 Cflags: -I\${includedir}
 EOF
 }
@@ -1282,14 +1407,14 @@ create_windows_bundle() {
   # BUNDLE EXISTED AND THEREFORE BEFORE THE LIST WAS KNOWN.
   create_ffmpegkit_package_config "$(get_ffmpeg_kit_version)" "${FFMPEG_KIT_RUNTIME_DLLS}" || return 1
 
-  install_pkg_config_file "libavformat.pc"
-  install_pkg_config_file "libswresample.pc"
-  install_pkg_config_file "libswscale.pc"
-  install_pkg_config_file "libavdevice.pc"
-  install_pkg_config_file "libavfilter.pc"
-  install_pkg_config_file "libavcodec.pc"
-  install_pkg_config_file "libavutil.pc"
-  install_pkg_config_file "ffmpeg-kit-next.pc"
+  install_pkg_config_file "libavformat.pc" || return 1
+  install_pkg_config_file "libswresample.pc" || return 1
+  install_pkg_config_file "libswscale.pc" || return 1
+  install_pkg_config_file "libavdevice.pc" || return 1
+  install_pkg_config_file "libavfilter.pc" || return 1
+  install_pkg_config_file "libavcodec.pc" || return 1
+  install_pkg_config_file "libavutil.pc" || return 1
+  install_pkg_config_file "ffmpeg-kit-next.pc" || return 1
 
   # COPY EXTERNAL LIBRARY LICENSES
   LICENSE_BASEDIR="${FFMPEG_KIT_BUNDLE_LICENSE_DIRECTORY}"

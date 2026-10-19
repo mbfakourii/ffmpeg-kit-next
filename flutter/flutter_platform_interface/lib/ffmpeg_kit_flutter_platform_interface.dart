@@ -140,6 +140,16 @@ abstract class FFmpegKitPlatform extends PlatformInterface {
 
   // FFmpegKitConfig
 
+  Future<bool> ffmpegKitConfigShutdown(int waitTimeout) async {
+    throw UnimplementedError(
+        'ffmpegKitConfigShutdown() has not been implemented!');
+  }
+
+  Future<bool> ffmpegKitConfigIsShutdown() async {
+    throw UnimplementedError(
+        'ffmpegKitConfigIsShutdown() has not been implemented!');
+  }
+
   Future<void> ffmpegKitConfigEnableRedirection() async {
     throw UnimplementedError(
         'ffmpegKitConfigEnableRedirection() has not been implemented!');
@@ -356,7 +366,8 @@ abstract class FFmpegKitPlatform extends PlatformInterface {
         'ffmpegKitFlutterInitializerGetLogLevel() has not been implemented!');
   }
 
-  Future<void> ffmpegKitFlutterInitializerPrintLoadConfirmation() async {
+  Future<void> ffmpegKitFlutterInitializerPrintLoadConfirmation(
+      String version) async {
     throw UnimplementedError(
         'ffmpegKitFlutterInitializerPrintLoadConfirmation() has not been '
         'implemented!');

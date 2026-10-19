@@ -38,13 +38,21 @@ copies them. Re-run `copy_local_binaries.sh` whenever you rebuild.
 
 On Android the copy is a small local Maven repository at
 `android/libs-maven/com/arthenica/ffmpeg-kit-next/<version>/` (e.g.
-`ffmpeg-kit-next-7.1.0.aar` plus its `.pom`). `android/build.gradle` consumes it via
-`maven { url "$projectDir/libs-maven" }` and depends on it by Maven coordinate
-`implementation 'com.arthenica:ffmpeg-kit-next:<version>'`.
+`ffmpeg-kit-next-<version>.aar` plus its `.pom`). `android/build.gradle` reads the
+version from that POM and uses a strict Maven dependency on it. The copy must
+contain exactly one native version and its matching AAR; missing, incomplete,
+or ambiguous copies fail during configuration. The native version is independent
+of the React Native package version.
 
 The iOS/iPadOS plugin ships a CocoaPods podspec
 (`ffmpeg-kit-next-react-native.podspec`) that vendors the frameworks directly
 via `s.vendored_frameworks = "ios/Frameworks/*.xcframework"`.
+
+The package version in `package.json` is also used by the CocoaPods podspec and
+`FFmpegKitConfig.getVersion()`. JavaScript passes that version to the native
+load-confirmation log, so neither Android nor iOS maintains a duplicate constant.
+`FFmpegKitConfig.getFFmpegVersion()` continues to report the bundled FFmpeg
+version, which is separate from the wrapper package version.
 
 ## Consuming the plugin from an app
 
@@ -82,8 +90,15 @@ allprojects {
         mavenCentral()
         def ffmpegKitProject = rootProject.findProject(":ffmpeg-kit-next-react-native")
         if (ffmpegKitProject != null) {
-            maven {
-                url "${ffmpegKitProject.projectDir}/libs-maven"
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url "${ffmpegKitProject.projectDir}/libs-maven"
+                    }
+                }
+                filter {
+                    includeModule('com.arthenica', 'ffmpeg-kit-next')
+                }
             }
         }
     }
@@ -94,6 +109,11 @@ allprojects {
 `node_modules` wherever autolinking resolved the dependency, so the same
 snippet works for any consumer without editing. iOS and iPadOS need no extra
 repository step — the framework is vendored via the podspec.
+
+The `exclusiveContent` rule reserves `com.arthenica:ffmpeg-kit-next` for this
+local repository, including while resolving the app's runtime dependencies.
+The strict dependency uses the copied POM's version and rejects incompatible
+version requests. Other dependencies keep using their normal repositories.
 
 ### iOS/iPadOS: install pods after copying binaries
 
@@ -108,10 +128,10 @@ whenever you rebuild and re-copy the binaries.
   ABIs compiled by your nix profile, and the Apple xcframeworks only the built
   slices. If the AAR lacks an ABI your build targets (e.g. `x86_64` for an
   emulator), restrict the app with `ndk { abiFilters ... }` or build that ABI.
-- **`smart-exception-java` is still fetched from Maven Central.** It is a small
-  pure-Java dependency of the AAR (not a native binary), declared in the AAR's POM
-  inside `android/libs-maven` and resolved transitively (`android/build.gradle`
-  keeps `mavenCentral()` for this). If you must avoid Maven entirely, vendor it as
-  a local jar instead.
+- **`smart-exception-java` and `kotlin-stdlib` are still fetched from Maven
+  Central.** They are JVM dependencies of the AAR (not native binaries), declared
+  in the AAR's POM inside `android/libs-maven` and resolved transitively
+  (`android/build.gradle` keeps `mavenCentral()` for this). If you must avoid
+  Maven entirely, vendor them as local jars instead.
 - **External libraries are fixed by what you enabled.** They are determined by
   the flags passed to `nix-<platform>.sh`.

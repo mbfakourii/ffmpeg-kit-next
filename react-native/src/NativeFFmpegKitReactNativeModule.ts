@@ -69,7 +69,7 @@ export interface Spec extends TurboModule {
 
   // Log level / history size
   getLogLevel(): Promise<number>;
-  printLoadConfirmation(): Promise<void>;
+  printLoadConfirmation(version: string): Promise<void>;
   setLogLevel(level: number): Promise<void>;
   getSessionHistorySize(): Promise<number>;
   setSessionHistorySize(sessionHistorySize: number): Promise<void>;
@@ -132,6 +132,8 @@ export interface Spec extends TurboModule {
   streamOutputClose(url: string): Promise<void>;
 
   // Lifecycle
+  shutdown(waitTimeout: number): Promise<boolean>;
+  isShutdown(): Promise<boolean>;
   uninit(): Promise<void>;
 }
 

@@ -39,9 +39,7 @@ extern NSString *const MediaKeyTags;
  */
 @interface MediaInformation : NSObject
 
-- (instancetype)init:(NSDictionary *)mediaDictionary
-         withStreams:(NSArray *)streams
-        withChapters:(NSArray *)chapters;
+- (instancetype)init:(NSDictionary *)mediaDictionary withStreams:(NSArray *)streams withChapters:(NSArray *)chapters;
 
 /**
  * Returns file name.

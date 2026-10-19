@@ -17,6 +17,12 @@
 # MSYS2 packages are used. nasm is only installed for x86-64, where FFmpeg and
 # the external libraries assemble their x86 optimizations with it; arm64
 # assembly is handled by clang.
+#
+# LLVM and libc++ are pinned together to 22.1.8 after installing the host
+# tools. libc++ 23 removes transitive includes used by zimg 3.0.6. The shared
+# installer uses MSYS2's archived packages and checks the selected versions
+# before either architecture starts its build. Keep package installation and
+# updates before that step so they cannot replace the pinned toolchain.
 
 name: windows build scripts
 
@@ -36,6 +42,7 @@ on:
       - 'scripts/variable.sh'
       - 'scripts/source.sh'
       - 'tools/**'
+      - '.github/scripts/install-msys2-llvm.sh'
       - '.github/workflows/windows-build-scripts.yml'
   pull_request:
     branches:
@@ -53,6 +60,7 @@ on:
       - 'scripts/variable.sh'
       - 'scripts/source.sh'
       - 'tools/**'
+      - '.github/scripts/install-msys2-llvm.sh'
       - '.github/workflows/windows-build-scripts.yml'
   workflow_dispatch:
     inputs:
@@ -82,7 +90,9 @@ jobs:
             git curl wget rsync pkgconf zip unzip tar xz gzip
             gperf bison gettext-devel texinfo autogen python perl ruby
           pacboy: >-
-            clang:p lld:p llvm:p pkgconf:p cmake:p meson:p ninja:p nasm:p
+            pkgconf:p cmake:p meson:p ninja:p nasm:p
+      - name: install LLVM 22.1.8
+        run: bash .github/scripts/install-msys2-llvm.sh
       - name: print the selected toolchain
         run: |
           echo "MSYSTEM=${MSYSTEM}"
@@ -120,7 +130,9 @@ jobs:
             git curl wget rsync pkgconf zip unzip tar xz gzip
             gperf bison gettext-devel texinfo autogen python perl ruby
           pacboy: >-
-            clang:p lld:p llvm:p pkgconf:p cmake:p meson:p ninja:p
+            pkgconf:p cmake:p meson:p ninja:p
+      - name: install LLVM 22.1.8
+        run: bash .github/scripts/install-msys2-llvm.sh
       - name: print the selected toolchain
         run: |
           echo "MSYSTEM=${MSYSTEM}"

@@ -20,6 +20,7 @@
 #ifndef FFMPEG_KIT_INTERNAL_FFMPEG_KIT_STREAM_OUTPUT_H
 #define FFMPEG_KIT_INTERNAL_FFMPEG_KIT_STREAM_OUTPUT_H
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -34,11 +35,9 @@ namespace internal {
  */
 class FFmpegKitStreamOutput {
   public:
-    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamOutput>
-    create(const std::string &extension);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamOutput> create(const std::string &extension);
 
-    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamOutput>
-    create(const std::string &extension, const long capacity);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegKitStreamOutput> create(const std::string &extension, const long capacity);
 
     ~FFmpegKitStreamOutput();
 
@@ -46,8 +45,7 @@ class FFmpegKitStreamOutput {
 
     std::shared_ptr<std::vector<uint8_t>> read(const int maxBytes);
 
-    std::shared_ptr<std::vector<uint8_t>> read(const int maxBytes,
-                                               const int timeoutMs);
+    std::shared_ptr<std::vector<uint8_t>> read(const int maxBytes, const int timeoutMs);
 
     void close();
 
@@ -58,7 +56,9 @@ class FFmpegKitStreamOutput {
 
     long _id;
     std::string _url;
-    bool _closed;
+    // Do not lock across I/O: native close must be able to wake blocked reads.
+    // Operations past the open check are synchronized by the native registry.
+    std::atomic<bool> _closed;
 };
 
 } // namespace internal

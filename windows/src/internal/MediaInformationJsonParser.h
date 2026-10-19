@@ -39,8 +39,7 @@ class MediaInformationJsonParser {
      * @return created MediaInformation instance of nullptr if a parsing error
      * occurs
      */
-    static std::shared_ptr<ffmpegkit::internal::MediaInformation>
-    from(const std::string &ffprobeJsonOutput);
+    static std::shared_ptr<ffmpegkit::internal::MediaInformation> from(const std::string &ffprobeJsonOutput);
 
     /**
      * Extracts <code>MediaInformation</code> from the given FFprobe json
@@ -49,8 +48,7 @@ class MediaInformationJsonParser {
      * @param ffprobeJsonOutput FFprobe json output
      * @return created MediaInformation instance
      */
-    static std::shared_ptr<ffmpegkit::internal::MediaInformation>
-    fromWithError(const std::string &ffprobeJsonOutput);
+    static std::shared_ptr<ffmpegkit::internal::MediaInformation> fromWithError(const std::string &ffprobeJsonOutput);
 };
 
 } // namespace internal

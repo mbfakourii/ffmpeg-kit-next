@@ -24,8 +24,7 @@
 static const long DefaultInitialCapacity = 4096;
 
 @interface FFmpegKitConfig (FFmpegKitOutputBufferSupport)
-+ (long)registerFFmpegKitOutputBuffer:(long)initialCapacity
-                          maxCapacity:(long)maxCapacity;
++ (long)registerFFmpegKitOutputBuffer:(long)initialCapacity maxCapacity:(long)maxCapacity;
 + (long)getFFmpegKitBufferSize:(long)bufferId;
 + (NSData *)getFFmpegKitOutputBuffer:(long)bufferId;
 + (NSData *)getFFmpegKitOutputBufferNoCopy:(long)bufferId;
@@ -33,14 +32,11 @@ static const long DefaultInitialCapacity = 4096;
 @end
 
 @interface FFmpegKitInputBuffer (FFmpegKitUrlSupport)
-+ (NSString *)urlWithProtocol:(NSString *)protocol
-                   resourceId:(long)resourceId
-                    extension:(NSString *)extension;
++ (NSString *)urlWithProtocol:(NSString *)protocol resourceId:(long)resourceId extension:(NSString *)extension;
 @end
 
 @interface FFmpegKitOutputBuffer ()
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension;
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension;
 - (void)ensureOpen;
 @end
 
@@ -51,38 +47,27 @@ static const long DefaultInitialCapacity = 4096;
 }
 
 + (instancetype)create:(NSString *)extension {
-    return [FFmpegKitOutputBuffer create:extension
-                         initialCapacity:DefaultInitialCapacity
-                             maxCapacity:0];
+    return [FFmpegKitOutputBuffer create:extension initialCapacity:DefaultInitialCapacity maxCapacity:0];
 }
 
-+ (instancetype)create:(NSString *)extension
-       initialCapacity:(long)initialCapacity
-           maxCapacity:(long)maxCapacity {
++ (instancetype)create:(NSString *)extension initialCapacity:(long)initialCapacity maxCapacity:(long)maxCapacity {
     if (initialCapacity < 0 || maxCapacity < 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"capacities must not be negative"];
+        [NSException raise:NSInvalidArgumentException format:@"capacities must not be negative"];
     }
 
-    long resourceId =
-        [FFmpegKitConfig registerFFmpegKitOutputBuffer:initialCapacity
-                                           maxCapacity:maxCapacity];
+    long resourceId = [FFmpegKitConfig registerFFmpegKitOutputBuffer:initialCapacity maxCapacity:maxCapacity];
     if (resourceId == 0) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Failed to register FFmpegKit output buffer."];
+        [NSException raise:NSInternalInconsistencyException format:@"Failed to register FFmpegKit output buffer."];
     }
 
     return [[self alloc] initWithResourceId:resourceId extension:extension];
 }
 
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension {
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension {
     self = [super init];
     if (self) {
         _resourceId = resourceId;
-        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitmem"
-                                          resourceId:resourceId
-                                           extension:extension];
+        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitmem" resourceId:resourceId extension:extension];
         _closed = NO;
     }
 
@@ -103,8 +88,7 @@ static const long DefaultInitialCapacity = 4096;
     [self ensureOpen];
     NSData *output = [FFmpegKitConfig getFFmpegKitOutputBuffer:_resourceId];
     if (output == nil) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Failed to read FFmpegKit output buffer."];
+        [NSException raise:NSInternalInconsistencyException format:@"Failed to read FFmpegKit output buffer."];
     }
 
     return output;
@@ -112,8 +96,7 @@ static const long DefaultInitialCapacity = 4096;
 
 - (NSData *)asDataNoCopy {
     [self ensureOpen];
-    NSData *output =
-        [FFmpegKitConfig getFFmpegKitOutputBufferNoCopy:_resourceId];
+    NSData *output = [FFmpegKitConfig getFFmpegKitOutputBufferNoCopy:_resourceId];
     return output == nil ? [NSData data] : output;
 }
 
@@ -126,8 +109,7 @@ static const long DefaultInitialCapacity = 4096;
 
 - (void)ensureOpen {
     if (_closed) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"FFmpegKit output buffer is closed."];
+        [NSException raise:NSInternalInconsistencyException format:@"FFmpegKit output buffer is closed."];
     }
 }
 

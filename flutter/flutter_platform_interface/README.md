@@ -1,8 +1,8 @@
-# Platform Interface for FFmpegKit Flutter
+# Platform Interface for FFmpegKitNext Flutter
 
-A common platform interface for the [`ffmpeg_kit_flutter`][1] plugin.
+A common platform interface for the [`ffmpeg_kit_next_flutter`][1] plugin.
 
-This interface allows platform-specific implementations of the `ffmpeg_kit_flutter`
+This interface allows platform-specific implementations of the `ffmpeg_kit_next_flutter`
 plugin, as well as the plugin itself, to ensure they are supporting the same
 interface.
 

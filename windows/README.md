@@ -6,9 +6,9 @@
 ### 1. Features
 - Provides a `C++` API built with `c++11` and a `C` API
 - Usable from both `MinGW-w64` and `MSVC` / `clang-cl`
-- Includes `x86-64` and `arm64` architectures
+- Includes `arm64` and `x86-64` architectures
 - Libraries are compiled natively, so only the architecture of the host machine is built
-- Built with the `CLANG64` (`x86-64`) or `CLANGARM64` (`arm64`) MSYS2 environment
+- Built with the `CLANGARM64` (`arm64`) or `CLANG64` (`x86-64`)  MSYS2 environment
 - Custom `FFmpegKit` protocols: `ffkitmem:` for finite in-memory input/output and `ffkitstream:` for memory-backed streaming input/output
 - Builds shared native libraries (`.dll`)
 
@@ -39,7 +39,7 @@ On an `x86-64` host, use the `CLANG64` environment:
 ```bash
 pacman -S --needed mingw-w64-clang-x86_64-clang mingw-w64-clang-x86_64-pkgconf make autoconf \
   automake libtool git curl rsync pkg-config gperf mingw-w64-clang-x86_64-meson \
-  mingw-w64-clang-x86_64-ninja gtk-doc autogen bison gettext-devel mingw-w64-clang-x86_64-nasm
+  mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-cmake gtk-doc autogen bison gettext-devel mingw-w64-clang-x86_64-nasm
 ```
 
 On an `arm64` host, use the `CLANGARM64` environment:
@@ -47,7 +47,7 @@ On an `arm64` host, use the `CLANGARM64` environment:
 ```bash
 pacman -S --needed mingw-w64-clang-aarch64-clang mingw-w64-clang-aarch64-pkgconf make autoconf \
   automake libtool git curl rsync pkg-config gperf mingw-w64-clang-aarch64-meson \
-  mingw-w64-clang-aarch64-ninja gtk-doc autogen bison gettext-devel
+  mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-cmake gtk-doc autogen bison gettext-devel
 ```
 
 See [Windows Prerequisites](https://github.com/arthenica/ffmpeg-kit-next/wiki/Windows-Prerequisites)
