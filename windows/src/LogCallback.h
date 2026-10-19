@@ -31,8 +31,7 @@ namespace ffmpegkit {
 /**
  * <p>Callback invoked when a log entry is received.
  */
-typedef std::function<void(const std::shared_ptr<ffmpegkit::Log> log)>
-    LogCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::Log> log)> LogCallback;
 
 namespace detail {
 
@@ -44,8 +43,7 @@ namespace detail {
  * different compiler, so everything the callback raises is swallowed here.
  */
 inline void logTrampoline(FFKLog *log, void *userData) {
-    CallbackHolder<LogCallback> *holder =
-        static_cast<CallbackHolder<LogCallback> *>(userData);
+    CallbackHolder<LogCallback> *holder = static_cast<CallbackHolder<LogCallback> *>(userData);
     if (holder == nullptr || !holder->function) {
         return;
     }

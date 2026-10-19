@@ -18,6 +18,7 @@
  */
 
 import {parseArguments} from './Arguments.js';
+import {SessionType} from './Constants.js';
 import {FFmpegKitConfig} from './FFmpegKitConfig.js';
 import {getFactory} from './FFmpegKitFactory.js';
 import {FFmpegSession} from './FFmpegSession.js';
@@ -32,6 +33,10 @@ import {FFmpegSession} from './FFmpegSession.js';
  * Every method here is async, as on the native platforms, so a bad argument rejects
  * the returned promise instead of throwing out of the call and slipping past a
  * caller's .catch().
+ *
+ * After FFmpegKitConfig.shutdown() executions fail with "FFmpegKit has been shut down"
+ * without running or invoking completion callbacks. Sessions created on the page for
+ * rejection have no native session id and are not added to history.
  */
 export class FFmpegKit {
     /**
@@ -59,6 +64,9 @@ export class FFmpegKit {
      * @returns {Promise<FFmpegSession>} a populated session after the command reaches COMPLETED or FAILED.
      */
     static async executeWithArguments(commandArguments) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.FFMPEG, commandArguments);
+        }
         const session = await FFmpegSession.create(commandArguments);
         await FFmpegKitConfig.ffmpegExecute(session);
         return session;
@@ -110,6 +118,9 @@ export class FFmpegKit {
         logCallback = null,
         statisticsCallback = null
     ) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.FFMPEG, commandArguments, {completeCallback, logCallback, statisticsCallback}, true);
+        }
         const session = await FFmpegSession.create(
             commandArguments,
             completeCallback,

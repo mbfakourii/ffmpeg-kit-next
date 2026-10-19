@@ -21,77 +21,41 @@
 #include "FFmpegKitConfig.h"
 #include "LogCallback.h"
 
-extern void
-addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
+extern void addSessionToSessionHistory(const std::shared_ptr<ffmpegkit::internal::Session> session);
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession>
-ffmpegkit::internal::FFprobeSession::create(const std::list<std::string> &arguments) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(
-        std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(
-            arguments, nullptr, nullptr,
-            ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(const std::list<std::string> &arguments) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(arguments, nullptr, nullptr, ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
     addSessionToSessionHistory(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(
-    const std::list<std::string> &arguments,
-    const FFprobeSessionCompleteCallback completeCallback) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(
-        std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(
-            arguments, completeCallback, nullptr,
-            ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(arguments, completeCallback, nullptr, ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
     addSessionToSessionHistory(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(
-    const std::list<std::string> &arguments,
-    const FFprobeSessionCompleteCallback completeCallback,
-    const ffmpegkit::internal::LogCallback logCallback) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(
-        std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(
-            arguments, completeCallback, logCallback,
-            ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(arguments, completeCallback, logCallback, ffmpegkit::internal::FFmpegKitConfig::getLogRedirectionStrategy()));
     addSessionToSessionHistory(session);
     return session;
 }
 
-std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(
-    const std::list<std::string> &arguments,
-    const FFprobeSessionCompleteCallback completeCallback,
-    const ffmpegkit::internal::LogCallback logCallback,
-    const LogRedirectionStrategy logRedirectionStrategy) {
-    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(
-        std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(
-            arguments, completeCallback, logCallback, logRedirectionStrategy));
+std::shared_ptr<ffmpegkit::internal::FFprobeSession> ffmpegkit::internal::FFprobeSession::create(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy) {
+    auto session = std::static_pointer_cast<ffmpegkit::internal::FFprobeSession>(std::make_shared<ffmpegkit::internal::FFprobeSession::PublicFFprobeSession>(arguments, completeCallback, logCallback, logRedirectionStrategy));
     addSessionToSessionHistory(session);
     return session;
 }
 
-struct ffmpegkit::internal::FFprobeSession::PublicFFprobeSession
-    : public ffmpegkit::internal::FFprobeSession {
-    PublicFFprobeSession(const std::list<std::string> &arguments,
-                         const FFprobeSessionCompleteCallback completeCallback,
-                         const ffmpegkit::internal::LogCallback logCallback,
-                         const LogRedirectionStrategy logRedirectionStrategy)
-        : FFprobeSession(arguments, completeCallback, logCallback,
-                         logRedirectionStrategy) {}
+struct ffmpegkit::internal::FFprobeSession::PublicFFprobeSession : public ffmpegkit::internal::FFprobeSession {
+    PublicFFprobeSession(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy)
+        : FFprobeSession(arguments, completeCallback, logCallback, logRedirectionStrategy) {}
 };
 
-ffmpegkit::internal::FFprobeSession::FFprobeSession(
-    const std::list<std::string> &arguments,
-    const FFprobeSessionCompleteCallback completeCallback,
-    const ffmpegkit::internal::LogCallback logCallback,
-    const LogRedirectionStrategy logRedirectionStrategy)
-    : ffmpegkit::internal::AbstractSession(arguments, logCallback,
-                                 logRedirectionStrategy),
-      _completeCallback{completeCallback} {}
+ffmpegkit::internal::FFprobeSession::FFprobeSession(const std::list<std::string> &arguments, const FFprobeSessionCompleteCallback completeCallback, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy)
+    : ffmpegkit::internal::AbstractSession(arguments, logCallback, logRedirectionStrategy), _completeCallback{completeCallback} {}
 
-ffmpegkit::internal::FFprobeSessionCompleteCallback
-ffmpegkit::internal::FFprobeSession::getCompleteCallback() {
-    return _completeCallback;
-}
+ffmpegkit::internal::FFprobeSessionCompleteCallback ffmpegkit::internal::FFprobeSession::getCompleteCallback() { return _completeCallback; }
 
 bool ffmpegkit::internal::FFprobeSession::isFFmpeg() const { return false; }
 

@@ -43,6 +43,24 @@ validate_web_linkage_mode() {
   esac
 }
 
+validate_web_ffmpegkit_library() {
+  local LIB_DIRECTORY="$1"
+  local LIBRARY="libffmpegkit.so"
+
+  if web_linkage_is_static; then
+    LIBRARY="libffmpegkit.a"
+  fi
+
+  if [[ ! -s "${LIB_DIRECTORY}/${LIBRARY}" ]]; then
+    local MESSAGE="ERROR: Web $(get_web_linkage_mode) build requires ${LIB_DIRECTORY}/${LIBRARY}; the file is missing or empty."
+    if ! web_linkage_is_static; then
+      MESSAGE+=" Dynamic builds require GNU Libtool >= 2.5.4 with Emscripten shared-library support; a static archive cannot satisfy this build."
+    fi
+    echo -e "\n${MESSAGE}\n" 1>>"${BASEDIR}"/build.log
+    return 1
+  fi
+}
+
 get_target_cpu() {
   echo "wasm32"
 }
@@ -721,14 +739,13 @@ create_web_main_module() {
   local LINK_INPUTS=()
   local LINK_TRAILER=()
   local MAIN_MODULE_FLAGS=()
-  local REQUIRED_LIBRARY
   local WEB_LINKAGE_MODE
   local ZLIB_PORT_FLAGS=()
 
   WEB_LINKAGE_MODE="$(get_web_linkage_mode)"
+  validate_web_ffmpegkit_library "${FFMPEG_KIT_MAIN_MODULE_LIB_DIRECTORY}" || return 1
 
   if web_linkage_is_static; then
-    REQUIRED_LIBRARY="${FFMPEG_KIT_MAIN_MODULE_LIB_DIRECTORY}/libffmpegkit.a"
     EXPORTED_RUNTIME_METHODS="ccall,cwrap,FS"
     LINK_INPUTS=(
       -Wl,--whole-archive
@@ -745,7 +762,6 @@ create_web_main_module() {
     )
     LINK_TRAILER=(-Wl,--end-group)
   else
-    REQUIRED_LIBRARY="${FFMPEG_KIT_MAIN_MODULE_LIB_DIRECTORY}/libffmpegkit.so"
     EXPORTED_RUNTIME_METHODS="ccall,cwrap,FS,callMain"
     MAIN_MODULE_FLAGS=(-sMAIN_MODULE=2)
     LINK_INPUTS=(
@@ -758,11 +774,6 @@ create_web_main_module() {
       "${FFMPEG_LIB_DIRECTORY}/libswresample.so"
       "${FFMPEG_LIB_DIRECTORY}/libswscale.so"
     )
-  fi
-
-  if [[ ! -f "${REQUIRED_LIBRARY}" ]]; then
-    echo -e "INFO: Skipping libffmpegkit ${WEB_LINKAGE_MODE} main module; ${REQUIRED_LIBRARY##*/} not found (ffmpeg-kit build skipped?)\n" 1>>"${BASEDIR}"/build.log 2>&1
-    return
   fi
 
   echo -e "INFO: Creating libffmpegkit.js and libffmpegkit.wasm ${WEB_LINKAGE_MODE} main module\n" 1>>"${BASEDIR}"/build.log 2>&1
@@ -815,6 +826,15 @@ create_web_main_module() {
     "${LINK_TRAILER[@]}" \
     1>>"${BASEDIR}"/build.log 2>&1 || return 1
 
+  local OUTPUT
+  for OUTPUT in libffmpegkit.js libffmpegkit.wasm; do
+    if [[ ! -s "${FFMPEG_KIT_MAIN_MODULE_OUTPUT_DIRECTORY}/${OUTPUT}" ]]; then
+      local MESSAGE="ERROR: Web ${WEB_LINKAGE_MODE} main module is missing or empty: ${FFMPEG_KIT_MAIN_MODULE_OUTPUT_DIRECTORY}/${OUTPUT}"
+      echo "${MESSAGE}" 1>>"${BASEDIR}"/build.log
+      return 1
+    fi
+  done
+
   echo -e "\nINFO: Created libffmpegkit.js and libffmpegkit.wasm ${WEB_LINKAGE_MODE} main module\n" 1>>"${BASEDIR}"/build.log 2>&1
 
 }
@@ -852,13 +872,13 @@ create_web_bundle() {
   local FFMPEG_KIT_BUNDLE_DIST_DIRECTORY="${FFMPEG_KIT_BUNDLE_ROOT}/dist"
   local FFMPEG_KIT_BUNDLE_LICENSES_DIRECTORY="${FFMPEG_KIT_BUNDLE_ROOT}/licenses"
 
+  validate_web_ffmpegkit_library "${LIB_INSTALL_BASE}/ffmpeg-kit/lib" || return 1
+
   initialize_folder "${FFMPEG_KIT_BUNDLE_LIB_DIRECTORY}" || return 1
   initialize_folder "${FFMPEG_KIT_BUNDLE_DIST_DIRECTORY}" || return 1
 
   if ! web_linkage_is_static; then
-    if [[ -f "${LIB_INSTALL_BASE}/ffmpeg-kit/lib/libffmpegkit.so" ]]; then
-      cp -L "${LIB_INSTALL_BASE}/ffmpeg-kit/lib/libffmpegkit.so" "${FFMPEG_KIT_BUNDLE_LIB_DIRECTORY}/libffmpegkit.so" 2>>"${BASEDIR}"/build.log || return 1
-    fi
+    cp -L "${LIB_INSTALL_BASE}/ffmpeg-kit/lib/libffmpegkit.so" "${FFMPEG_KIT_BUNDLE_LIB_DIRECTORY}/libffmpegkit.so" 2>>"${BASEDIR}"/build.log || return 1
     for library in libavdevice libavcodec libavfilter libavformat libavutil libswresample libswscale; do
       cp -L "${LIB_INSTALL_BASE}/ffmpeg/lib/${library}.so" "${FFMPEG_KIT_BUNDLE_LIB_DIRECTORY}/${library}.so" 2>>"${BASEDIR}"/build.log || return 1
     done

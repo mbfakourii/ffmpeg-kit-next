@@ -23,30 +23,70 @@ import com.arthenica.smartexception.java.Exceptions
 
 /**
  * <p>Executes an FFmpeg session asynchronously.
+ *
+ * <p>The task claims its session when its executor runs it. Claimed before shutdown, the session
+ * runs; claimed during shutdown grace, it fails with the reason "FFmpegKit has been shut down"
+ * without native execution and its completion callbacks may still run; claimed later, it fails
+ * and its completion callbacks are dropped. The task releases its session before the execution
+ * stops being counted, so an executor that keeps the task does not keep the session.
  */
-open class AsyncFFmpegExecuteTask(private val ffmpegSession: FFmpegSession) : Runnable {
+open class AsyncFFmpegExecuteTask(ffmpegSession: FFmpegSession) : Runnable {
 
-    private val completeCallback: FFmpegSessionCompleteCallback? = ffmpegSession.getCompleteCallback()
+    /** Moved out when the task runs, so an executor that keeps the task does not keep the session. */
+    private var ffmpegSession: FFmpegSession? = ffmpegSession
+
+    /** Set when FFmpegKitConfig counted this task as queued when it submitted it. */
+    internal var queued = false
 
     override fun run() {
-        FFmpegKitConfig.ffmpegExecute(ffmpegSession)
+        val state = LibraryState.claim(queued)
+        try {
+            runClaimed(state)
+        } finally {
+            if (state != LibraryState.TERMINATED) {
+                LibraryState.endExecution()
+            }
+        }
+    }
 
-        if (completeCallback != null) {
+    /** Runs or rejects the claimed session; the session is released when this returns. */
+    private fun runClaimed(state: Int) {
+        val session = ffmpegSession ?: return
+        ffmpegSession = null
+
+        if (state == LibraryState.RUNNING) {
+            FFmpegKitConfig.runFFmpegSession(session)
+        } else {
+            LibraryState.reject(session)
+        }
+        if (state != LibraryState.TERMINATED) {
+            notifyComplete(session)
+        }
+    }
+
+    /** Calls the session's complete callback, then the global one, each admitted separately. */
+    private fun notifyComplete(session: FFmpegSession) {
+        val completeCallback = session.getCompleteCallback()
+        if (completeCallback != null && LibraryState.beginCallback(true)) {
             try {
                 // NOTIFY SESSION CALLBACK DEFINED
-                completeCallback.apply(ffmpegSession)
+                completeCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside session complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
 
         val globalFFmpegSessionCompleteCallback = FFmpegKitConfig.getFFmpegSessionCompleteCallback()
-        if (globalFFmpegSessionCompleteCallback != null) {
+        if (globalFFmpegSessionCompleteCallback != null && LibraryState.beginCallback(true)) {
             try {
                 // NOTIFY GLOBAL CALLBACK DEFINED
-                globalFFmpegSessionCompleteCallback.apply(ffmpegSession)
+                globalFFmpegSessionCompleteCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside global complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
     }

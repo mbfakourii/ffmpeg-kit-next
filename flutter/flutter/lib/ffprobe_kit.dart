@@ -29,6 +29,10 @@ import 'media_information_session_complete_callback.dart';
 import 'src/ffmpeg_kit_factory.dart';
 
 /// Main class to run "FFprobe" commands.
+///
+/// Once [FFmpegKitConfig.shutdown] begins, new executions fail with
+/// "FFmpegKit has been shut down", without native execution or completion
+/// callbacks. In-flight results, output and callbacks are not guaranteed.
 class FFprobeKit {
   static FFmpegKitPlatform _platform = FFmpegKitPlatform.instance;
 

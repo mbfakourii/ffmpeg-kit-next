@@ -51,8 +51,7 @@ class FFmpegKit {
      * @param arguments FFmpeg command options/arguments as string list
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    executeWithArguments(const std::list<std::string> &arguments);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> executeWithArguments(const std::list<std::string> &arguments);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution with arguments provided.
@@ -66,9 +65,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution with arguments provided.
@@ -85,11 +82,7 @@ class FFmpegKit {
      * @param statisticsCallback  callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    executeWithArgumentsAsync(const std::list<std::string> &arguments,
-                              FFmpegSessionCompleteCallback completeCallback,
-                              ffmpegkit::internal::LogCallback logCallback,
-                              ffmpegkit::internal::StatisticsCallback statisticsCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> executeWithArgumentsAsync(const std::list<std::string> &arguments, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback, ffmpegkit::internal::StatisticsCallback statisticsCallback);
 
     /**
      * <p>Synchronously executes FFmpeg command provided. Space character is
@@ -99,8 +92,7 @@ class FFmpegKit {
      * @param command FFmpeg command
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    execute(const std::string command);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> execute(const std::string command);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given command. Space
@@ -116,9 +108,7 @@ class FFmpegKit {
      * has completed
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback);
 
     /**
      * <p>Starts an asynchronous FFmpeg execution for the given command. Space
@@ -136,11 +126,7 @@ class FFmpegKit {
      * @param statisticsCallback  callback that will receive statistics
      * @return FFmpeg session created for this execution
      */
-    static std::shared_ptr<ffmpegkit::internal::FFmpegSession>
-    executeAsync(const std::string command,
-                 FFmpegSessionCompleteCallback completeCallback,
-                 ffmpegkit::internal::LogCallback logCallback,
-                 ffmpegkit::internal::StatisticsCallback statisticsCallback);
+    static std::shared_ptr<ffmpegkit::internal::FFmpegSession> executeAsync(const std::string command, FFmpegSessionCompleteCallback completeCallback, ffmpegkit::internal::LogCallback logCallback, ffmpegkit::internal::StatisticsCallback statisticsCallback);
 
     /**
      * <p>Cancels all running sessions.
@@ -165,8 +151,7 @@ class FFmpegKit {
      *
      * @return all FFmpeg sessions in the session history
      */
-    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFmpegSession>>>
-    listSessions();
+    static std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::FFmpegSession>>> listSessions();
 };
 
 } // namespace internal

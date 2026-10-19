@@ -30,10 +30,7 @@ namespace ffmpegkit {
  */
 class Statistics {
   public:
-    Statistics(const long sessionId, const int videoFrameNumber,
-               const float videoFps, const float videoQuality,
-               const int64_t size, const double time, const double bitrate,
-               const double speed);
+    Statistics(const long sessionId, const int videoFrameNumber, const float videoFps, const float videoQuality, const int64_t size, const double time, const double bitrate, const double speed);
     long getSessionId();
     int getVideoFrameNumber();
     float getVideoFps();

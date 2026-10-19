@@ -19,21 +19,15 @@
 
 #include "Value.h"
 
-ffmpegkit::json::Value::Value()
-    : _type{Type::Null}, _bool{false}, _int{0}, _double{0} {}
+ffmpegkit::json::Value::Value() : _type{Type::Null}, _bool{false}, _int{0}, _double{0} {}
 
-ffmpegkit::json::Value::Value(const bool value)
-    : _type{Type::Bool}, _bool{value}, _int{0}, _double{0} {}
+ffmpegkit::json::Value::Value(const bool value) : _type{Type::Bool}, _bool{value}, _int{0}, _double{0} {}
 
-ffmpegkit::json::Value::Value(const int64_t value)
-    : _type{Type::Int}, _bool{false}, _int{value}, _double{0} {}
+ffmpegkit::json::Value::Value(const int64_t value) : _type{Type::Int}, _bool{false}, _int{value}, _double{0} {}
 
-ffmpegkit::json::Value::Value(const double value)
-    : _type{Type::Double}, _bool{false}, _int{0}, _double{value} {}
+ffmpegkit::json::Value::Value(const double value) : _type{Type::Double}, _bool{false}, _int{0}, _double{value} {}
 
-ffmpegkit::json::Value::Value(std::string value)
-    : _type{Type::String}, _bool{false}, _int{0}, _double{0},
-      _string{std::move(value)} {}
+ffmpegkit::json::Value::Value(std::string value) : _type{Type::String}, _bool{false}, _int{0}, _double{0}, _string{std::move(value)} {}
 
 ffmpegkit::json::Value ffmpegkit::json::Value::makeArray() {
     Value value;
@@ -96,8 +90,7 @@ std::shared_ptr<std::string> ffmpegkit::json::Value::getString() const {
     return std::make_shared<std::string>(_string);
 }
 
-const ffmpegkit::json::Value *
-ffmpegkit::json::Value::find(const std::string &key) const {
+const ffmpegkit::json::Value *ffmpegkit::json::Value::find(const std::string &key) const {
     if (_type != Type::Object) {
         return nullptr;
     }
@@ -108,15 +101,9 @@ ffmpegkit::json::Value::find(const std::string &key) const {
     return &member->second;
 }
 
-const std::map<std::string, ffmpegkit::json::Value> &
-ffmpegkit::json::Value::getObject() const {
-    return _object;
-}
+const std::map<std::string, ffmpegkit::json::Value> &ffmpegkit::json::Value::getObject() const { return _object; }
 
-const std::vector<ffmpegkit::json::Value> &
-ffmpegkit::json::Value::getArray() const {
-    return _array;
-}
+const std::vector<ffmpegkit::json::Value> &ffmpegkit::json::Value::getArray() const { return _array; }
 
 void ffmpegkit::json::Value::set(const std::string &key, Value value) {
     if (_type != Type::Object) {

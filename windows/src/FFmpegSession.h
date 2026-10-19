@@ -43,10 +43,7 @@ class FFmpegSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments) {
-        return create(arguments, nullptr, nullptr, nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments) { return create(arguments, nullptr, nullptr, nullptr); }
 
     /**
      * Builds a new FFmpeg session.
@@ -55,11 +52,7 @@ class FFmpegSession : public AbstractSession {
      * @param completeCallback session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback) {
-        return create(arguments, completeCallback, nullptr, nullptr);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback) { return create(arguments, completeCallback, nullptr, nullptr); }
 
     /**
      * Builds a new FFmpeg session.
@@ -70,13 +63,8 @@ class FFmpegSession : public AbstractSession {
      * @param statisticsCallback session specific statistics callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback,
-           ffmpegkit::StatisticsCallback statisticsCallback) {
-        return createInternal(arguments, completeCallback, logCallback,
-                              statisticsCallback, -1);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback) {
+        return createInternal(arguments, completeCallback, logCallback, statisticsCallback, -1);
     }
 
     /**
@@ -89,15 +77,9 @@ class FFmpegSession : public AbstractSession {
      * @param logRedirectionStrategy session specific log redirection strategy
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback,
-           ffmpegkit::StatisticsCallback statisticsCallback,
-           ffmpegkit::LogRedirectionStrategy logRedirectionStrategy) {
-        return createInternal(arguments, completeCallback, logCallback,
-                              statisticsCallback,
-                              static_cast<int>(logRedirectionStrategy));
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback,
+                                                            ffmpegkit::LogRedirectionStrategy logRedirectionStrategy) {
+        return createInternal(arguments, completeCallback, logCallback, statisticsCallback, static_cast<int>(logRedirectionStrategy));
     }
 
     /**
@@ -108,11 +90,8 @@ class FFmpegSession : public AbstractSession {
     ffmpegkit::StatisticsCallback getStatisticsCallback() {
         ffk_statistics_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered = ffk_ffmpeg_session_get_statistics_callback(
-            handle(), &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<ffmpegkit::StatisticsCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::statisticsTrampoline);
+        const int registered = ffk_ffmpeg_session_get_statistics_callback(handle(), &callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::StatisticsCallback>(registered, callback, userData, &ffmpegkit::detail::statisticsTrampoline);
     }
 
     /**
@@ -123,12 +102,8 @@ class FFmpegSession : public AbstractSession {
     ffmpegkit::FFmpegSessionCompleteCallback getCompleteCallback() {
         ffk_session_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered =
-            ffk_session_get_complete_callback(handle(), &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<
-            ffmpegkit::FFmpegSessionCompleteCallback>(
-            registered, callback, userData,
-            &ffmpegkit::detail::ffmpegSessionTrampoline);
+        const int registered = ffk_session_get_complete_callback(handle(), &callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::FFmpegSessionCompleteCallback>(registered, callback, userData, &ffmpegkit::detail::ffmpegSessionTrampoline);
     }
 
     /**
@@ -138,34 +113,21 @@ class FFmpegSession : public AbstractSession {
      * @param waitTimeout wait timeout for statistics in milliseconds
      * @return list of statistics entries
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getAllStatisticsWithTimeout(const int waitTimeout) {
-        return ffmpegkit::detail::takeStatisticsList(
-            ffk_ffmpeg_session_get_all_statistics_with_timeout(handle(),
-                                                               waitTimeout));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getAllStatisticsWithTimeout(const int waitTimeout) { return ffmpegkit::detail::takeStatisticsList(ffk_ffmpeg_session_get_all_statistics_with_timeout(handle(), waitTimeout)); }
 
     /**
      * Returns all statistics entries generated for this session.
      *
      * @return list of statistics entries
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getAllStatistics() {
-        return ffmpegkit::detail::takeStatisticsList(
-            ffk_ffmpeg_session_get_all_statistics(handle()));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getAllStatistics() { return ffmpegkit::detail::takeStatisticsList(ffk_ffmpeg_session_get_all_statistics(handle())); }
 
     /**
      * Returns all statistics entries delivered for this session so far.
      *
      * @return list of statistics entries
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getStatistics() {
-        return ffmpegkit::detail::takeStatisticsList(
-            ffk_ffmpeg_session_get_statistics(handle()));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getStatistics() { return ffmpegkit::detail::takeStatisticsList(ffk_ffmpeg_session_get_statistics(handle())); }
 
     /**
      * Returns the last received statistics entry.
@@ -173,8 +135,7 @@ class FFmpegSession : public AbstractSession {
      * @return last received statistics entry or nullptr
      */
     std::shared_ptr<ffmpegkit::Statistics> getLastReceivedStatistics() {
-        FFKStatistics *statistics =
-            ffk_ffmpeg_session_get_last_received_statistics(handle());
+        FFKStatistics *statistics = ffk_ffmpeg_session_get_last_received_statistics(handle());
         auto result = ffmpegkit::detail::takeStatistics(statistics);
         ffk_statistics_free(statistics);
         return result;
@@ -186,8 +147,7 @@ class FFmpegSession : public AbstractSession {
      * @param statistics statistics entry
      */
     void addStatistics(const std::shared_ptr<ffmpegkit::Statistics> statistics) {
-        FFKStatistics *statisticsHandle =
-            ffmpegkit::detail::makeStatisticsHandle(statistics);
+        FFKStatistics *statisticsHandle = ffmpegkit::detail::makeStatisticsHandle(statistics);
         if (statisticsHandle == nullptr) {
             return;
         }
@@ -203,34 +163,17 @@ class FFmpegSession : public AbstractSession {
     bool isMediaInformation() const override { return false; }
 
   private:
-    template <typename SessionType>
-    friend std::shared_ptr<SessionType>
-        ffmpegkit::detail::adoptSession(FFKSession *);
+    template <typename SessionType> friend std::shared_ptr<SessionType> ffmpegkit::detail::adoptSession(FFKSession *);
 
     explicit FFmpegSession(FFKSession *handle) : AbstractSession(handle) {}
 
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    createInternal(const std::list<std::string> &arguments,
-                   const ffmpegkit::FFmpegSessionCompleteCallback &completeCallback,
-                   const ffmpegkit::LogCallback &logCallback,
-                   const ffmpegkit::StatisticsCallback &statisticsCallback,
-                   const int logRedirectionStrategy) {
+    static std::shared_ptr<ffmpegkit::FFmpegSession> createInternal(const std::list<std::string> &arguments, const ffmpegkit::FFmpegSessionCompleteCallback &completeCallback, const ffmpegkit::LogCallback &logCallback, const ffmpegkit::StatisticsCallback &statisticsCallback,
+                                                                    const int logRedirectionStrategy) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_ffmpeg_session_create(
-            argumentArray.data(), argumentArray.size(),
-            completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline
-                             : nullptr,
-            ffmpegkit::detail::makeCallbackHolder(completeCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::FFmpegSessionCompleteCallback>(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(),
-            ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
-            ffmpegkit::detail::makeCallbackHolder(statisticsCallback),
-            ffmpegkit::detail::callbackHolderDeleter<
-                ffmpegkit::StatisticsCallback>(),
-            logRedirectionStrategy);
+        FFKSession *handle =
+            ffk_ffmpeg_session_create(argumentArray.data(), argumentArray.size(), completeCallback ? &ffmpegkit::detail::ffmpegSessionTrampoline : nullptr, ffmpegkit::detail::makeCallbackHolder(completeCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::FFmpegSessionCompleteCallback>(),
+                                      ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(), ffmpegkit::detail::statisticsCallbackFunction(statisticsCallback),
+                                      ffmpegkit::detail::makeCallbackHolder(statisticsCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::StatisticsCallback>(), logRedirectionStrategy);
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptSession<ffmpegkit::FFmpegSession>(handle);
     }
@@ -240,17 +183,14 @@ namespace detail {
 
 /** @see logTrampoline */
 inline void ffmpegSessionTrampoline(FFKSession *session, void *userData) {
-    CallbackHolder<ffmpegkit::FFmpegSessionCompleteCallback> *holder =
-        static_cast<CallbackHolder<ffmpegkit::FFmpegSessionCompleteCallback> *>(
-            userData);
+    CallbackHolder<ffmpegkit::FFmpegSessionCompleteCallback> *holder = static_cast<CallbackHolder<ffmpegkit::FFmpegSessionCompleteCallback> *>(userData);
     if (holder == nullptr || !holder->function) {
         return;
     }
     try {
         // The handle belongs to the library and only lives for this call, so
         // the session handed to the callback gets one of its own
-        holder->function(adoptSession<ffmpegkit::FFmpegSession>(
-            ffk_session_retain(session)));
+        holder->function(adoptSession<ffmpegkit::FFmpegSession>(ffk_session_retain(session)));
     } catch (...) {
     }
 }

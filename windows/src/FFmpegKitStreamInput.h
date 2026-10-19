@@ -22,6 +22,7 @@
 
 #include "FFmpegKitConfig.h"
 #include "ffmpegkit_facade.h"
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -45,10 +46,7 @@ class FFmpegKitStreamInput {
      * @param extension file extension hint, for example "mp4"
      * @return created input stream
      */
-    static std::shared_ptr<ffmpegkit::FFmpegKitStreamInput>
-    create(const std::string &extension) {
-        return create(extension, DefaultStreamCapacity);
-    }
+    static std::shared_ptr<ffmpegkit::FFmpegKitStreamInput> create(const std::string &extension) { return create(extension, DefaultStreamCapacity); }
 
     /**
      * Registers a new input stream.
@@ -57,19 +55,15 @@ class FFmpegKitStreamInput {
      * @param capacity ring buffer capacity in bytes
      * @return created input stream
      */
-    static std::shared_ptr<ffmpegkit::FFmpegKitStreamInput>
-    create(const std::string &extension, const long capacity) {
+    static std::shared_ptr<ffmpegkit::FFmpegKitStreamInput> create(const std::string &extension, const long capacity) {
         if (capacity <= 0) {
             throw ffmpegkit::Exception("capacity must be positive");
         }
-        const long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitStream(
-            capacity, StreamTypeInput);
+        const long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitStream(capacity, StreamTypeInput);
         if (id == 0) {
-            throw ffmpegkit::Exception(
-                "Failed to register FFmpegKit input stream.");
+            throw ffmpegkit::Exception("Failed to register FFmpegKit input stream.");
         }
-        return std::shared_ptr<ffmpegkit::FFmpegKitStreamInput>(
-            new ffmpegkit::FFmpegKitStreamInput(id, extension));
+        return std::shared_ptr<ffmpegkit::FFmpegKitStreamInput>(new ffmpegkit::FFmpegKitStreamInput(id, extension));
     }
 
     ~FFmpegKitStreamInput() { close(); }
@@ -112,15 +106,12 @@ class FFmpegKitStreamInput {
      * @param timeoutMs write timeout in milliseconds, negative to wait forever
      * @return number of bytes written
      */
-    int write(const std::vector<uint8_t> &data, const size_t offset,
-              const size_t length, const int timeoutMs) {
+    int write(const std::vector<uint8_t> &data, const size_t offset, const size_t length, const int timeoutMs) {
         ensureWritable();
         if (offset > data.size() || length > (data.size() - offset)) {
-            throw ffmpegkit::Exception(
-                "offset and length must fit inside data");
+            throw ffmpegkit::Exception("offset and length must fit inside data");
         }
-        return checkWritten(ffmpegkit::FFmpegKitConfig::writeFFmpegKitStream(
-            _id, data, offset, length, timeoutMs));
+        return checkWritten(ffmpegkit::FFmpegKitConfig::writeFFmpegKitStream(_id, data, offset, length, timeoutMs));
     }
 
     /**
@@ -134,11 +125,9 @@ class FFmpegKitStreamInput {
     int write(const uint8_t *data, const size_t length, const int timeoutMs) {
         ensureWritable();
         if (data == nullptr && length > 0) {
-            throw ffmpegkit::Exception(
-                "data must not be null when length is positive");
+            throw ffmpegkit::Exception("data must not be null when length is positive");
         }
-        return checkWritten(ffmpegkit::FFmpegKitConfig::writeFFmpegKitStream(
-            _id, data, length, timeoutMs));
+        return checkWritten(ffmpegkit::FFmpegKitConfig::writeFFmpegKitStream(_id, data, length, timeoutMs));
     }
 
     /**
@@ -146,9 +135,8 @@ class FFmpegKitStreamInput {
      * data is consumed. Safe to call more than once.
      */
     void closeInput() {
-        if (!_closed && !_inputClosed) {
+        if (!_closed.load() && !_inputClosed.exchange(true)) {
             ffmpegkit::FFmpegKitConfig::closeFFmpegKitStreamInput(_id);
-            _inputClosed = true;
         }
     }
 
@@ -156,9 +144,8 @@ class FFmpegKitStreamInput {
      * Unregisters this stream. Safe to call more than once.
      */
     void close() {
-        if (!_closed) {
+        if (!_closed.exchange(true)) {
             ffmpegkit::FFmpegKitConfig::unregisterFFmpegKitStream(_id);
-            _closed = true;
         }
     }
 
@@ -166,39 +153,34 @@ class FFmpegKitStreamInput {
     static const long DefaultStreamCapacity = 1024 * 1024;
     static const int StreamTypeInput = 1;
 
-    FFmpegKitStreamInput(const long id, const std::string &extension)
-        : _id{id},
-          _url{ffmpegkit::detail::buildProtocolUrl("ffkitstream", id,
-                                                   extension)},
-          _closed{false}, _inputClosed{false} {}
+    FFmpegKitStreamInput(const long id, const std::string &extension) : _id{id}, _url{ffmpegkit::detail::buildProtocolUrl("ffkitstream", id, extension)}, _closed{false}, _inputClosed{false} {}
 
     void ensureOpen() {
-        if (_closed) {
+        if (_closed.load()) {
             throw ffmpegkit::Exception("FFmpegKit input stream is closed.");
         }
     }
 
     void ensureWritable() {
         ensureOpen();
-        if (_inputClosed) {
-            throw ffmpegkit::Exception(
-                "FFmpegKit input stream is closed for writing.");
+        if (_inputClosed.load()) {
+            throw ffmpegkit::Exception("FFmpegKit input stream is closed for writing.");
         }
     }
 
     static int checkWritten(const int written) {
         if (written < 0) {
-            throw ffmpegkit::Exception(
-                "Failed to write FFmpegKit input stream: " +
-                std::to_string(written) + ".");
+            throw ffmpegkit::Exception("Failed to write FFmpegKit input stream: " + std::to_string(written) + ".");
         }
         return written;
     }
 
     long _id;
     std::string _url;
-    bool _closed;
-    bool _inputClosed;
+    // Do not lock across I/O: native close must be able to wake blocked writes.
+    // Operations past these checks are synchronized by the native registry.
+    std::atomic<bool> _closed;
+    std::atomic<bool> _inputClosed;
 };
 
 } // namespace ffmpegkit

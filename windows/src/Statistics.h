@@ -35,13 +35,8 @@ namespace ffmpegkit {
  */
 class Statistics {
   public:
-    Statistics(const long sessionId, const int videoFrameNumber,
-               const float videoFps, const float videoQuality,
-               const int64_t size, const double time, const double bitrate,
-               const double speed)
-        : _sessionId{sessionId}, _videoFrameNumber{videoFrameNumber},
-          _videoFps{videoFps}, _videoQuality{videoQuality}, _size{size},
-          _time{time}, _bitrate{bitrate}, _speed{speed} {}
+    Statistics(const long sessionId, const int videoFrameNumber, const float videoFps, const float videoQuality, const int64_t size, const double time, const double bitrate, const double speed)
+        : _sessionId{sessionId}, _videoFrameNumber{videoFrameNumber}, _videoFps{videoFps}, _videoQuality{videoQuality}, _size{size}, _time{time}, _bitrate{bitrate}, _speed{speed} {}
 
     long getSessionId() { return _sessionId; }
 
@@ -73,38 +68,25 @@ class Statistics {
 namespace detail {
 
 /** Copies a library statistics handle into a Statistics value. */
-inline std::shared_ptr<ffmpegkit::Statistics>
-takeStatistics(FFKStatistics *handle) {
+inline std::shared_ptr<ffmpegkit::Statistics> takeStatistics(FFKStatistics *handle) {
     if (handle == nullptr) {
         return nullptr;
     }
-    return std::make_shared<ffmpegkit::Statistics>(
-        ffk_statistics_get_session_id(handle),
-        ffk_statistics_get_video_frame_number(handle),
-        ffk_statistics_get_video_fps(handle),
-        ffk_statistics_get_video_quality(handle),
-        ffk_statistics_get_size(handle), ffk_statistics_get_time(handle),
-        ffk_statistics_get_bitrate(handle), ffk_statistics_get_speed(handle));
+    return std::make_shared<ffmpegkit::Statistics>(ffk_statistics_get_session_id(handle), ffk_statistics_get_video_frame_number(handle), ffk_statistics_get_video_fps(handle), ffk_statistics_get_video_quality(handle), ffk_statistics_get_size(handle), ffk_statistics_get_time(handle),
+                                                   ffk_statistics_get_bitrate(handle), ffk_statistics_get_speed(handle));
 }
 
 /** Creates a library statistics handle from a Statistics value. */
-inline FFKStatistics *
-makeStatisticsHandle(const std::shared_ptr<ffmpegkit::Statistics> &statistics) {
+inline FFKStatistics *makeStatisticsHandle(const std::shared_ptr<ffmpegkit::Statistics> &statistics) {
     if (statistics == nullptr) {
         return nullptr;
     }
-    return ffk_statistics_create(
-        statistics->getSessionId(), statistics->getVideoFrameNumber(),
-        statistics->getVideoFps(), statistics->getVideoQuality(),
-        statistics->getSize(), statistics->getTime(), statistics->getBitrate(),
-        statistics->getSpeed());
+    return ffk_statistics_create(statistics->getSessionId(), statistics->getVideoFrameNumber(), statistics->getVideoFps(), statistics->getVideoQuality(), statistics->getSize(), statistics->getTime(), statistics->getBitrate(), statistics->getSpeed());
 }
 
 /** Rebuilds a std::list of statistics from a library list and releases it. */
-inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-takeStatisticsList(FFKStatisticsList *list) {
-    auto result =
-        std::make_shared<std::list<std::shared_ptr<ffmpegkit::Statistics>>>();
+inline std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> takeStatisticsList(FFKStatisticsList *list) {
+    auto result = std::make_shared<std::list<std::shared_ptr<ffmpegkit::Statistics>>>();
     if (list == nullptr) {
         return result;
     }

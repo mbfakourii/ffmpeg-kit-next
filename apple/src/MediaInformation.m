@@ -47,9 +47,7 @@ NSString *const MediaKeyTags = @"tags";
     NSArray *chapterArray;
 }
 
-- (instancetype)init:(NSDictionary *)mediaDictionary
-         withStreams:(NSArray *)streams
-        withChapters:(NSArray *)chapters {
+- (instancetype)init:(NSDictionary *)mediaDictionary withStreams:(NSArray *)streams withChapters:(NSArray *)chapters {
     self = [super init];
     if (self) {
         dictionary = mediaDictionary;

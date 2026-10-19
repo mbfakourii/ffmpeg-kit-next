@@ -6,17 +6,17 @@
   - `Android`, `iOS` and `iPadOS`
   - `arm-v7a`, `arm-v7a-neon`, `arm64-v8a`, `x86` and `x86_64` architectures on Android
   - `Android API Level 24` or later
-  - `armv7`, `armv7s`, `arm64`, `arm64-simulator`, `i386`, `x86_64`, `x86_64-mac-catalyst` and `arm64-mac-catalyst` architectures on iOS
+  - `arm64`, `arm64-simulator`, `arm64e`, `x86_64`, `x86_64-mac-catalyst` and `arm64-mac-catalyst` architectures on iOS
   - `iOS 12.1+` deployment targets
   - iPad devices and the iPad Simulator load `iOS` frameworks/xcframeworks
   - Can process Storage Access Framework (SAF) Uris on Android
-  - 25 external libraries
+  - 38 external libraries
 
-    `dav1d`, `fontconfig`, `freetype`, `fribidi`, `gmp`, `gnutls`, `kvazaar`, `lame`, `libass`, `libiconv`, `libilbc`, `libtheora`, `libvorbis`, `libvpx`, `libwebp`, `libxml2`, `opencore-amr`, `opus`, `shine`, `snappy`, `soxr`, `speex`, `twolame`, `vo-amrwbenc`, `zimg`
+    `chromaprint`, `dav1d`, `fontconfig`, `freetype`, `fribidi`, `gmp`, `gnutls`, `harfbuzz`, `kvazaar`, `lame`, `libaom`, `libass`, `libiconv`, `libilbc`, `libjxl`, `liblc3`, `libsvtav1`, `libtheora`, `libvorbis`, `libvpx`, `libwebp`, `libxml2`, `opencore-amr`, `openh264`, `openssl`, `opus`, `sdl`, `shine`, `snappy`, `soxr`, `speex`, `srt`, `tesseract`, `twolame`, `vo-amrwbenc`, `vvenc`, `zimg`
 
-  - 4 external libraries with GPL license
+  - 5 external libraries with GPL license
 
-    `vid.stab`, `x264`, `x265`, `xvidcore`
+    `rubberband`, `vid.stab`, `x264`, `x265`, `xvidcore`
 
   - `zlib` and `MediaCodec` Android system libraries
   - `bzip2`, `libiconv`, `libuuid`, `zlib` system libraries and `AudioToolbox`, `VideoToolbox`, `AVFoundation` system frameworks on iOS/iPadOS
@@ -57,8 +57,15 @@ allprojects {
     repositories {
         def ffmpegKitProject = rootProject.findProject(":ffmpeg-kit-next-react-native")
         if (ffmpegKitProject != null) {
-            maven {
-                url "${ffmpegKitProject.projectDir}/libs-maven"
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url "${ffmpegKitProject.projectDir}/libs-maven"
+                    }
+                }
+                filter {
+                    includeModule('com.arthenica', 'ffmpeg-kit-next')
+                }
             }
         }
     }
@@ -67,6 +74,13 @@ allprojects {
 
 `ffmpegKitProject.projectDir` is the plugin's `android/` folder inside `node_modules`, so the same snippet works for
 any app. iOS and iPadOS need no extra repository step.
+
+The plugin reads its native dependency version from the single POM in the copied Maven bundle and requires that exact
+version. The exclusive repository rule keeps this module in the local repository. Re-run `copy_local_binaries.sh android`
+after rebuilding; missing or multiple native versions and missing AARs produce a build error.
+
+The React Native package version lives in `package.json`. `FFmpegKitConfig.getVersion()`, the native load-confirmation
+log, and the CocoaPods podspec all use that value.
 
 #### 2.1 Build Variants and External Libraries
 

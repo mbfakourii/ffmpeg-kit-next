@@ -33,9 +33,7 @@ namespace ffmpegkit {
  *
  * @param statistics statistics entry
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::Statistics> statistics)>
-    StatisticsCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::Statistics> statistics)> StatisticsCallback;
 
 } // namespace ffmpegkit
 

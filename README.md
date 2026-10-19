@@ -65,10 +65,18 @@ Building `FFmpegKitNext` without Nix is also supported. The non-Nix build workfl
 provides additional features on top of `FFmpeg` to enable platform specific resources, control how commands are 
 executed and how the results are handled.
 
-`Android` library of `FFmpegKitNext` has a `Kotlin` API, `Apple` libraries (`iOS`, `iPadOS`, `macOS`, `tvOS`, `visionOS`) have an
-`Objective-C` API, `Flutter` library comes with a `Dart` API, `Linux` has a `C++` API, `Windows` has `C++` and `C` APIs, `React Native` and `Web`
-libraries provide a `JavaScript` API with `Typescript` definitions, which are identical in terms of features and
-capabilities.
+The `FFmpegKitNext` libraries provide the following APIs, which are identical in terms of features and capabilities.
+
+| Library | API |
+| --- | --- |
+| `Android` | `Kotlin` |
+| `Apple` (`iOS`, `iPadOS`, `tvOS`, `visionOS`) | `Objective-C` |
+| `Flutter` | `Dart` |
+| `macOS` | `Objective-C`, `C` |
+| `Linux` | `C++`, `C` |
+| `React Native` | `JavaScript` with `TypeScript` definitions |
+| `Web` | `JavaScript` with `TypeScript` definitions |
+| `Windows` | `C++`, `C` |
 
 ### 11. External Libraries
 
@@ -129,6 +137,7 @@ the same `FFmpeg` release branch.
 
 |    Platforms     |                                 FFmpegKit Version                                 | FFmpeg Version | Release Date |
 |:----------------:|:---------------------------------------------------------------------------------:|:--------------:|:------------:|
+|  Android<br>Flutter<br>iOS / iPadOS<br>Linux<br>macOS<br>React Native<br>tvOS<br>visionOS<br>Web<br>Windows      |   [9.0.1](https://github.com/arthenica/ffmpeg-kit-next/releases/tag/v9.0.1)    |      9.0.2       | Oct 18, 2026 |
 |  Android<br>Flutter<br>iOS / iPadOS<br>Linux<br>macOS<br>React Native<br>tvOS<br>visionOS<br>Web<br>Windows      |   [9.0.0](https://github.com/arthenica/ffmpeg-kit-next/releases/tag/v9.0.0)    |      9.0.1       | Aug 24, 2026 |
 |  Windows      |   [8.1.1](https://github.com/arthenica/ffmpeg-kit-next/releases/tag/v8.1.1.windows)    |      8.1.2       | Aug 21, 2026 |
 |  Android<br>Flutter<br>iOS / iPadOS<br>Linux<br>macOS<br>React Native<br>tvOS<br>visionOS<br>Web      |   [8.1.1](https://github.com/arthenica/ffmpeg-kit-next/releases/tag/v8.1.1)    |      8.1.2       | Jul 28, 2026 |
@@ -149,8 +158,9 @@ A more detailed documentation is available under [Wiki](https://github.com/arthe
 You can see how `FFmpegKitNext` is used inside an application by running test applications created under
 [FFmpegKitNext Test](https://github.com/arthenica/ffmpeg-kit-next-test) project.
 
-All applications are identical and supports command execution, video encoding, accessing https urls, encoding audio,
-burning subtitles, video stabilisation, pipe operations, ffkit protocols and concurrent command execution.
+The applications are **almost the same across platforms** and cover command execution, video encoding, accessing
+HTTPS URLs, audio encoding, burning subtitles, video stabilisation, pipe operations, ffkit protocols and concurrent
+command execution. Individual features depend on the capabilities available on each operating system or runtime.
 
 ### 15. License
 

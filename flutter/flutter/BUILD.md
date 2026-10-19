@@ -16,6 +16,7 @@ with the desired external libraries:
 ./nix-ios.sh     -p <profile>   # produces prebuilt/bundle-apple-xcframework-ios-*/... (covers both iOS and iPadOS)
 ./nix-macos.sh   -p <profile>   # produces prebuilt/bundle-apple-xcframework-macos-*/...
 ./nix-linux.sh   -p <profile>   # produces prebuilt/bundle-linux/... (native host architecture only)
+./windows.sh # run in MSYS2 CLANG64; produces prebuilt/bundle-windows/ffmpeg-kit-next/
 ```
 
 Then copy the built artifacts into this plugin:
@@ -26,6 +27,7 @@ cd flutter/flutter
 # or copy selectively:
 ./copy_local_binaries.sh android ios
 ./copy_local_binaries.sh linux
+./copy_local_binaries.sh windows
 ```
 
 This places:
@@ -36,35 +38,67 @@ This places:
 | iOS/iPadOS     | `ios/ffmpeg_kit_next_flutter/Frameworks/*.xcframework`   | `ios/*.podspec` + `Package.swift`   |
 | macOS    | `macos/ffmpeg_kit_next_flutter/Frameworks/*.xcframework` | `macos/*.podspec` + `Package.swift` |
 | Linux    | `linux/Frameworks/ffmpeg-kit-next/{include,lib}`         | `linux/CMakeLists.txt`              |
+| Windows  | `windows/Frameworks/ffmpeg-kit-next/{include,lib,bin}`   | `windows/CMakeLists.txt`            |
 
 The copied binaries are ignored by git on purpose — every consumer rebuilds and
 copies them. Re-run `copy_local_binaries.sh` whenever you rebuild.
 
 On Android the copy is a small local Maven repository at
 `android/libs-maven/com/arthenica/ffmpeg-kit-next/<version>/` (e.g.
-`ffmpeg-kit-next-6.1.2.aar` plus its `.pom`). `android/build.gradle` consumes it via
-`maven { url "$projectDir/libs-maven" }` and depends on it by Maven coordinate
-`implementation 'com.arthenica:ffmpeg-kit-next:<version>'` (no longer the
-`flatDir` + `implementation(name: 'ffmpeg-kit-next', ext: 'aar')` form).
+`ffmpeg-kit-next-<version>.aar` plus its `.pom`). `android/build.gradle` reads the
+version from that POM and uses a strict Maven dependency on it. The copy must
+contain exactly one native version and its matching AAR; missing, incomplete,
+or ambiguous copies fail during configuration. The native version is independent
+of the Flutter package version, and neither needs to be edited into Gradle.
+
+Linux and Windows consume the copied headers and native libraries without a
+release-number requirement. Linux checks for the required headers and shared
+libraries; Windows keeps its CMake imported targets and x64 checks. Rebuild and
+copy the native bundle whenever its sources change.
 
 The Apple plugins ship both a CocoaPods podspec and a Swift Package Manager
 `Package.swift` (under `<platform>/ffmpeg_kit_next_flutter/`). Flutter uses the
 Swift package when Swift Package Manager is enabled and falls back to the podspec
 otherwise; both reference the same `Sources/` and `Frameworks/` trees.
+Both podspecs read the Flutter package version from `pubspec.yaml`.
 
 ## Consuming the plugin from an app
+
+### Windows x64
+
+Windows builds require MSYS2 CLANG64, Visual Studio's Desktop development with C++
+workload, and the Windows Flutter SDK. Complete the Windows build and copy steps
+in the one-time setup above before consuming the plugin.
+
+The default bundle is LGPL without optional external libraries. It is created
+at `prebuilt/bundle-windows/ffmpeg-kit-next` and copied to the git-ignored
+`flutter/flutter/windows/Frameworks/ffmpeg-kit-next` directory.
+
+The plugin copies its runtime DLLs beside the app executable. Distribute the
+entire Release directory together with the bundle licenses. Rebuild the bundle
+and repeat the copy step above whenever its native sources change.
+
+After adding the local dependency below, run `flutter build windows --debug` or
+`flutter build windows --release` from the consuming app.
+
+Pipe registration and closing are forwarded to the native library. The current
+Windows implementation returns `null` from `registerNewFFmpegPipe`, and
+`closeFFmpegPipe` does nothing. The `writeToPipe` helper returns a `NOT_SUPPORTED`
+platform error on Windows.
+
+### Local dependency
 
 In the app's `pubspec.yaml`, reference the plugin by path:
 
 ```yaml
 dependencies:
-  ffmpeg_kit_flutter:
+  ffmpeg_kit_next_flutter:
     path: /path/to/ffmpeg-kit-next/flutter/flutter
 ```
 
-The plugin depends on `ffmpeg_kit_next_flutter_platform_interface` (pure Dart, no
-native code). It resolves from pub.dev by default; to use the local copy too,
-add an override:
+The plugin already resolves `ffmpeg_kit_next_flutter_platform_interface` from
+the sibling repository directory. A consuming application can explicitly
+override that location when needed:
 
 ```yaml
 dependency_overrides:
@@ -91,8 +125,15 @@ allprojects {
         mavenCentral()
         def ffmpegKitProject = rootProject.findProject(":ffmpeg_kit_next_flutter")
         if (ffmpegKitProject != null) {
-            maven {
-                url "${ffmpegKitProject.projectDir}/libs-maven"
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url "${ffmpegKitProject.projectDir}/libs-maven"
+                    }
+                }
+                filter {
+                    includeModule('com.arthenica', 'ffmpeg-kit-next')
+                }
             }
         }
     }
@@ -102,6 +143,12 @@ allprojects {
 `ffmpegKitProject.projectDir` is the plugin's `android/` folder wherever Flutter
 resolved the dependency (local path, pub cache, …), so the same snippet works for
 any consumer without editing.
+
+The `exclusiveContent` rule reserves `com.arthenica:ffmpeg-kit-next` for this
+local repository, including while resolving the app's runtime dependencies.
+The plugin's strict dependency selects the version recorded in the copied POM;
+an incompatible version request fails instead of silently upgrading it. Other
+dependencies continue to resolve from their normal repositories.
 
 Keep this in `build.gradle` (project-level). Do **not** move it into
 `settings.gradle`'s `dependencyResolutionManagement` with

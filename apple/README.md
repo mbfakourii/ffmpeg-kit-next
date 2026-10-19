@@ -17,7 +17,7 @@
 #### 1.2 macOS
 - Supports `macOS 10.15+` deployment targets
 - Includes `arm64` and `x86_64` architectures
-- Objective-C API
+- Objective-C API and `C` API
 - Camera access
 - `ARC` enabled library
 - Custom `FFmpegKit` protocols: `ffkitmem:` for finite in-memory input/output and `ffkitstream:` for memory-backed streaming input/output
@@ -329,5 +329,5 @@ Build it locally first, then integrate the generated artifacts.
 
 ### 4. Test Application
 
-You can see how `FFmpegKitNext` is used inside an application by running `iOS`, `iPadOS`, `macOS` and `tvOS` test
-applications developed under the [FFmpegKitNext Test](https://github.com/arthenica/ffmpeg-kit-next-test) project.
+You can see how `FFmpegKitNext` is used inside an application by running `iOS`, `iPadOS`, `macOS`, `tvOS` and
+`visionOS` test applications developed under the [FFmpegKitNext Test](https://github.com/arthenica/ffmpeg-kit-next-test) project.

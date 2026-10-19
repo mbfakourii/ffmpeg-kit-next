@@ -31,16 +31,13 @@ namespace ffmpegkit {
 /**
  * <p>Callback invoked when a statistics entry is received.
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::Statistics> statistics)>
-    StatisticsCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::Statistics> statistics)> StatisticsCallback;
 
 namespace detail {
 
 /** @see logTrampoline */
 inline void statisticsTrampoline(FFKStatistics *statistics, void *userData) {
-    CallbackHolder<StatisticsCallback> *holder =
-        static_cast<CallbackHolder<StatisticsCallback> *>(userData);
+    CallbackHolder<StatisticsCallback> *holder = static_cast<CallbackHolder<StatisticsCallback> *>(userData);
     if (holder == nullptr || !holder->function) {
         return;
     }
@@ -51,10 +48,7 @@ inline void statisticsTrampoline(FFKStatistics *statistics, void *userData) {
 }
 
 /** Returns the trampoline to register, or nullptr for an empty callback. */
-inline ffk_statistics_cb
-statisticsCallbackFunction(const StatisticsCallback &callback) {
-    return callback ? &statisticsTrampoline : nullptr;
-}
+inline ffk_statistics_cb statisticsCallbackFunction(const StatisticsCallback &callback) { return callback ? &statisticsTrampoline : nullptr; }
 
 } // namespace detail
 } // namespace ffmpegkit

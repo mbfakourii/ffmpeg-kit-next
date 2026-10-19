@@ -73,8 +73,7 @@
             [cpu appendString:@"v8"];
             break;
 
-#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) &&                                \
-    __IPHONE_OS_VERSION_MAX_ALLOWED >= 120100
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 120100
         case CPU_SUBTYPE_ARM64E:
             [cpu appendString:@"e"];
             break;
@@ -123,8 +122,7 @@
             break;
         }
 
-#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) &&                                \
-    __IPHONE_OS_VERSION_MAX_ALLOWED >= 120100
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 120100
     } else if (type == CPU_TYPE_ARM64_32) {
         [cpu appendString:@"arm64_32"];
 

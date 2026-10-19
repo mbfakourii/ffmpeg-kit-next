@@ -18,6 +18,7 @@
  */
 
 import {parseArguments} from './Arguments.js';
+import {SessionType} from './Constants.js';
 import {FFmpegKitConfig} from './FFmpegKitConfig.js';
 import {getFactory} from './FFmpegKitFactory.js';
 import {FFprobeSession} from './FFprobeSession.js';
@@ -44,6 +45,10 @@ function mediaInformationCommandArguments(path) {
  * Commands execute inside the FFmpegKit worker. Methods that accept a command
  * string parse it into arguments using FFmpegKitConfig.parseArguments(); use
  * the argument-array methods when arguments must be passed losslessly.
+ *
+ * After FFmpegKitConfig.shutdown() executions fail with "FFmpegKit has been shut down"
+ * without running or invoking completion callbacks. Sessions created on the page for
+ * rejection have no native session id and are not added to history.
  */
 export class FFprobeKit {
     /**
@@ -63,6 +68,9 @@ export class FFprobeKit {
      * @returns {Promise<FFprobeSession>} a populated session after the command reaches COMPLETED or FAILED.
      */
     static async executeWithArguments(commandArguments) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.FFPROBE, commandArguments);
+        }
         const session = await FFprobeSession.create(commandArguments);
         await FFmpegKitConfig.ffprobeExecute(session);
         return session;
@@ -101,6 +109,9 @@ export class FFprobeKit {
      * @returns {Promise<FFprobeSession>} the session after the request is posted to the worker.
      */
     static async executeWithArgumentsAsync(commandArguments, completeCallback = null, logCallback = null) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.FFPROBE, commandArguments, {completeCallback, logCallback}, true);
+        }
         const session = await FFprobeSession.create(
             commandArguments,
             completeCallback,
@@ -172,6 +183,9 @@ export class FFprobeKit {
      * @returns {Promise<MediaInformationSession>} a session populated with parsed media information when available.
      */
     static async getMediaInformationFromCommandArguments(commandArguments, waitTimeout = null) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.MEDIA_INFORMATION, commandArguments);
+        }
         const session = await MediaInformationSession.create(commandArguments);
         await FFmpegKitConfig.getMediaInformationExecute(session, waitTimeout);
         return session;
@@ -221,6 +235,9 @@ export class FFprobeKit {
         logCallback = null,
         waitTimeout = null
     ) {
+        if (FFmpegKitConfig.isShutdown()) {
+            return getFactory().rejectedSession(SessionType.MEDIA_INFORMATION, commandArguments, {completeCallback, logCallback}, true);
+        }
         const session = await MediaInformationSession.create(
             commandArguments,
             completeCallback,

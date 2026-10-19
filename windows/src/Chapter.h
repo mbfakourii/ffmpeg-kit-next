@@ -48,8 +48,7 @@ class Chapter {
     static constexpr const char *KeyEndTime = "end_time";
     static constexpr const char *KeyTags = "tags";
 
-    Chapter(std::shared_ptr<ffmpegkit::json::Value> chapterValue)
-        : _handle(nullptr, ffk_chapter_free) {
+    Chapter(std::shared_ptr<ffmpegkit::json::Value> chapterValue) : _handle(nullptr, ffk_chapter_free) {
         const std::string json = ffmpegkit::detail::fromJson(chapterValue);
         FFKChapter *handle = ffk_chapter_create(json.c_str());
         ffmpegkit::detail::checkError();
@@ -78,10 +77,7 @@ class Chapter {
         return getProperty(KeyTags);
     }
 
-    std::shared_ptr<std::string> getStringProperty(const char *key) {
-        return ffmpegkit::detail::takeOptionalString(
-            ffk_chapter_get_string_property(_handle.get(), key));
-    }
+    std::shared_ptr<std::string> getStringProperty(const char *key) { return ffmpegkit::detail::takeOptionalString(ffk_chapter_get_string_property(_handle.get(), key)); }
 
     std::shared_ptr<int64_t> getNumberProperty(const char *key) {
         int64_t value = 0;
@@ -91,19 +87,12 @@ class Chapter {
         return std::make_shared<int64_t>(value);
     }
 
-    std::shared_ptr<ffmpegkit::json::Value> getProperty(const char *key) {
-        return ffmpegkit::detail::takeJson(
-            ffk_chapter_get_property_json(_handle.get(), key));
-    }
+    std::shared_ptr<ffmpegkit::json::Value> getProperty(const char *key) { return ffmpegkit::detail::takeJson(ffk_chapter_get_property_json(_handle.get(), key)); }
 
-    std::shared_ptr<ffmpegkit::json::Value> getAllProperties() {
-        return ffmpegkit::detail::takeJson(
-            ffk_chapter_get_all_properties_json(_handle.get()));
-    }
+    std::shared_ptr<ffmpegkit::json::Value> getAllProperties() { return ffmpegkit::detail::takeJson(ffk_chapter_get_all_properties_json(_handle.get())); }
 
   private:
-    friend std::shared_ptr<ffmpegkit::Chapter>
-    ffmpegkit::detail::adoptChapter(FFKChapter *);
+    friend std::shared_ptr<ffmpegkit::Chapter> ffmpegkit::detail::adoptChapter(FFKChapter *);
 
     struct Adopt {};
 
@@ -119,15 +108,12 @@ inline std::shared_ptr<ffmpegkit::Chapter> adoptChapter(FFKChapter *handle) {
     if (handle == nullptr) {
         return nullptr;
     }
-    return std::shared_ptr<ffmpegkit::Chapter>(
-        new ffmpegkit::Chapter(handle, ffmpegkit::Chapter::Adopt()));
+    return std::shared_ptr<ffmpegkit::Chapter>(new ffmpegkit::Chapter(handle, ffmpegkit::Chapter::Adopt()));
 }
 
 /** Rebuilds a std::vector of chapters from a library list and releases it. */
-inline std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>
-takeChapterList(FFKChapterList *list) {
-    auto result =
-        std::make_shared<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>();
+inline std::shared_ptr<std::vector<std::shared_ptr<ffmpegkit::Chapter>>> takeChapterList(FFKChapterList *list) {
+    auto result = std::make_shared<std::vector<std::shared_ptr<ffmpegkit::Chapter>>>();
     if (list == nullptr) {
         return result;
     }

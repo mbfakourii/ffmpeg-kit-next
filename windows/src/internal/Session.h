@@ -56,24 +56,21 @@ class Session {
      *
      * @return session create time
      */
-    virtual std::chrono::time_point<std::chrono::system_clock>
-    getCreateTime() const = 0;
+    virtual std::chrono::time_point<std::chrono::system_clock> getCreateTime() const = 0;
 
     /**
      * Returns session start time.
      *
      * @return session start time
      */
-    virtual std::chrono::time_point<std::chrono::system_clock>
-    getStartTime() const = 0;
+    virtual std::chrono::time_point<std::chrono::system_clock> getStartTime() const = 0;
 
     /**
      * Returns session end time.
      *
      * @return session end time
      */
-    virtual std::chrono::time_point<std::chrono::system_clock>
-    getEndTime() const = 0;
+    virtual std::chrono::time_point<std::chrono::system_clock> getEndTime() const = 0;
 
     /**
      * Returns the time taken to execute this session.
@@ -105,8 +102,7 @@ class Session {
      * @param waitTimeout wait timeout for asynchronous messages in milliseconds
      * @return list of log entries generated for this session
      */
-    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getAllLogsWithTimeout(const int waitTimeout) const = 0;
+    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getAllLogsWithTimeout(const int waitTimeout) const = 0;
 
     /**
      * Returns all log entries generated for this session. If there are
@@ -115,8 +111,7 @@ class Session {
      *
      * @return list of log entries generated for this session
      */
-    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getAllLogs() const = 0;
+    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getAllLogs() const = 0;
 
     /**
      * Returns all log entries delivered for this session. Note that if there
@@ -125,8 +120,7 @@ class Session {
      *
      * @return list of log entries received for this session
      */
-    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getLogs() const = 0;
+    virtual std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getLogs() const = 0;
 
     /**
      * Returns all log entries generated for this session as a concatenated
@@ -137,8 +131,7 @@ class Session {
      * @return all log entries generated for this session as a concatenated
      * string
      */
-    virtual std::string
-    getAllLogsAsStringWithTimeout(const int waitTimeout) const = 0;
+    virtual std::string getAllLogsAsStringWithTimeout(const int waitTimeout) const = 0;
 
     /**
      * Returns all log entries generated for this session as a concatenated
@@ -232,8 +225,7 @@ class Session {
      *
      * @param returnCode return code of the execution
      */
-    virtual void
-    complete(const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) = 0;
+    virtual void complete(const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) = 0;
 
     /**
      * Ends running the session with a failure.

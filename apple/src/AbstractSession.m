@@ -49,9 +49,7 @@ extern void addSessionToSessionHistory(id<Session> session);
     sessionIdGenerator = [[AtomicLong alloc] initWithValue:1];
 }
 
-- (instancetype)init:(NSArray *)arguments
-               withLogCallback:(LogCallback)logCallback
-    withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
+- (instancetype)init:(NSArray *)arguments withLogCallback:(LogCallback)logCallback withLogRedirectionStrategy:(LogRedirectionStrategy)logRedirectionStrategy {
     self = [super init];
     if (self) {
         _sessionId = [sessionIdGenerator getAndIncrement];
@@ -97,9 +95,7 @@ extern void addSessionToSessionHistory(id<Session> session);
     NSDate *startTime = _startTime;
     NSDate *endTime = _endTime;
     if (startTime != nil && endTime != nil) {
-        return [[NSNumber
-            numberWithDouble:([endTime timeIntervalSinceDate:startTime] * 1000)]
-            longValue];
+        return [[NSNumber numberWithDouble:([endTime timeIntervalSinceDate:startTime] * 1000)] longValue];
     }
 
     return 0;
@@ -114,14 +110,11 @@ extern void addSessionToSessionHistory(id<Session> session);
 }
 
 - (void)waitForAsynchronousMessagesInTransmit:(int)timeout {
-    NSDate *expireDate =
-        [[NSDate date] dateByAddingTimeInterval:((double)timeout) / 1000];
+    NSDate *expireDate = [[NSDate date] dateByAddingTimeInterval:((double)timeout) / 1000];
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
-    while ([self thereAreAsynchronousMessagesInTransmit] &&
-           ([[NSDate date] timeIntervalSinceDate:expireDate] < 0)) {
-        dispatch_semaphore_wait(
-            semaphore, dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC));
+    while ([self thereAreAsynchronousMessagesInTransmit] && ([[NSDate date] timeIntervalSinceDate:expireDate] < 0)) {
+        dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC));
     }
 }
 
@@ -129,19 +122,14 @@ extern void addSessionToSessionHistory(id<Session> session);
     [self waitForAsynchronousMessagesInTransmit:waitTimeout];
 
     if ([self thereAreAsynchronousMessagesInTransmit]) {
-        NSLog(@"getAllLogsWithTimeout was called to return all logs but there "
-              @"are "
-              @"still logs being transmitted for session id %ld.",
-              _sessionId);
+        NSLog(@"getAllLogsWithTimeout was called to return all logs but there are still logs being transmitted for session id %ld.", _sessionId);
     }
 
     return [self getLogs];
 }
 
 - (NSArray *)getAllLogs {
-    return [self
-        getAllLogsWithTimeout:
-            AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
+    return [self getAllLogsWithTimeout:AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
 }
 
 - (NSArray *)getLogs {
@@ -156,19 +144,14 @@ extern void addSessionToSessionHistory(id<Session> session);
     [self waitForAsynchronousMessagesInTransmit:waitTimeout];
 
     if ([self thereAreAsynchronousMessagesInTransmit]) {
-        NSLog(
-            @"getAllLogsAsStringWithTimeout was called to return all logs but "
-            @"there are still logs being transmitted for session id %ld.",
-            _sessionId);
+        NSLog(@"getAllLogsAsStringWithTimeout was called to return all logs but there are still logs being transmitted for session id %ld.", _sessionId);
     }
 
     return [self getLogsAsString];
 }
 
 - (NSString *)getAllLogsAsString {
-    return [self
-        getAllLogsAsStringWithTimeout:
-            AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
+    return [self getAllLogsAsStringWithTimeout:AbstractSessionDefaultTimeoutForAsynchronousMessagesInTransmit];
 }
 
 - (NSString *)getLogsAsString {
@@ -225,9 +208,7 @@ extern void addSessionToSessionHistory(id<Session> session);
 }
 
 - (void)fail:(NSException *)exception {
-    _failStackTrace =
-        [NSString stringWithFormat:@"%@\n%@", [exception userInfo],
-                                   [exception callStackSymbols]];
+    _failStackTrace = [NSString stringWithFormat:@"%@\n%@", [exception userInfo], [exception callStackSymbols]];
     _state = SessionStateFailed;
     _endTime = [NSDate date];
 }

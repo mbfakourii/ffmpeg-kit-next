@@ -22,18 +22,14 @@
 
 @interface FFmpegKitConfig (FFmpegKitBufferSupport)
 + (long)registerFFmpegKitInputBuffer:(NSData *)data;
-+ (long)registerFFmpegKitInputBufferWithBytes:(const void *)bytes
-                                       length:(NSUInteger)length;
++ (long)registerFFmpegKitInputBufferWithBytes:(const void *)bytes length:(NSUInteger)length;
 + (long)getFFmpegKitBufferSize:(long)bufferId;
 + (void)unregisterFFmpegKitBuffer:(long)bufferId;
 @end
 
 @interface FFmpegKitInputBuffer ()
-+ (NSString *)urlWithProtocol:(NSString *)protocol
-                   resourceId:(long)resourceId
-                    extension:(NSString *)extension;
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension;
++ (NSString *)urlWithProtocol:(NSString *)protocol resourceId:(long)resourceId extension:(NSString *)extension;
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension;
 - (void)ensureOpen;
 @end
 
@@ -45,49 +41,35 @@
 
 + (instancetype)fromData:(NSData *)data extension:(NSString *)extension {
     if (data == nil) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"data must not be nil"];
+        [NSException raise:NSInvalidArgumentException format:@"data must not be nil"];
     }
 
     long resourceId = [FFmpegKitConfig registerFFmpegKitInputBuffer:data];
     if (resourceId == 0) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Failed to register FFmpegKit input buffer."];
+        [NSException raise:NSInternalInconsistencyException format:@"Failed to register FFmpegKit input buffer."];
     }
 
     return [[self alloc] initWithResourceId:resourceId extension:extension];
 }
 
-+ (instancetype)fromBytes:(const void *)bytes
-                   length:(NSUInteger)length
-                extension:(NSString *)extension {
++ (instancetype)fromBytes:(const void *)bytes length:(NSUInteger)length extension:(NSString *)extension {
     if (bytes == NULL && length > 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"bytes must not be NULL when length is positive"];
+        [NSException raise:NSInvalidArgumentException format:@"bytes must not be NULL when length is positive"];
     }
 
-    long resourceId =
-        [FFmpegKitConfig registerFFmpegKitInputBufferWithBytes:bytes
-                                                        length:length];
+    long resourceId = [FFmpegKitConfig registerFFmpegKitInputBufferWithBytes:bytes length:length];
     if (resourceId == 0) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Failed to register FFmpegKit input buffer."];
+        [NSException raise:NSInternalInconsistencyException format:@"Failed to register FFmpegKit input buffer."];
     }
 
     return [[self alloc] initWithResourceId:resourceId extension:extension];
 }
 
-+ (NSString *)urlWithProtocol:(NSString *)protocol
-                   resourceId:(long)resourceId
-                    extension:(NSString *)extension {
++ (NSString *)urlWithProtocol:(NSString *)protocol resourceId:(long)resourceId extension:(NSString *)extension {
     NSString *normalizedExtension = @"bin";
 
     if (extension != nil) {
-        NSString *candidate = [[extension
-            stringByTrimmingCharactersInSet:
-                [NSCharacterSet whitespaceAndNewlineCharacterSet]]
-            lowercaseStringWithLocale:[NSLocale localeWithLocaleIdentifier:
-                                                   @"en_US_POSIX"]];
+        NSString *candidate = [[extension stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseStringWithLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
 
         while ([candidate hasPrefix:@"."]) {
             candidate = [candidate substringFromIndex:1];
@@ -106,18 +88,14 @@
         }
     }
 
-    return [NSString stringWithFormat:@"%@:%ld.%@", protocol, resourceId,
-                                      normalizedExtension];
+    return [NSString stringWithFormat:@"%@:%ld.%@", protocol, resourceId, normalizedExtension];
 }
 
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension {
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension {
     self = [super init];
     if (self) {
         _resourceId = resourceId;
-        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitmem"
-                                          resourceId:resourceId
-                                           extension:extension];
+        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitmem" resourceId:resourceId extension:extension];
         _closed = NO;
     }
 
@@ -143,8 +121,7 @@
 
 - (void)ensureOpen {
     if (_closed) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"FFmpegKit input buffer is closed."];
+        [NSException raise:NSInternalInconsistencyException format:@"FFmpegKit input buffer is closed."];
     }
 }
 

@@ -1,3 +1,7 @@
+## 9.0.1
+- Bugfix release based on native 9.0.1 (FFmpeg 9.0.2)
+- Adds `FFmpegKitConfig.shutdown(int waitTimeout)` method
+
 ## 9.0.0
 - Feature release based on native 9.0.0 (FFmpeg 9.0.1)
 - Fixes [#22](https://github.com/arthenica/ffmpeg-kit-next/issues/22)

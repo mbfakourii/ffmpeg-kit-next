@@ -45,9 +45,7 @@ class AbstractSession : public Session,
      * @param logCallback            session specific log callback
      * @param logRedirectionStrategy session specific log redirection strategy
      */
-    AbstractSession(const std::list<std::string> &arguments,
-                    const ffmpegkit::internal::LogCallback logCallback,
-                    const LogRedirectionStrategy logRedirectionStrategy);
+    AbstractSession(const std::list<std::string> &arguments, const ffmpegkit::internal::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy);
 
     /**
      * Waits for all asynchronous messages to be transmitted until the given
@@ -76,24 +74,21 @@ class AbstractSession : public Session,
      *
      * @return session create time
      */
-    std::chrono::time_point<std::chrono::system_clock>
-    getCreateTime() const override;
+    std::chrono::time_point<std::chrono::system_clock> getCreateTime() const override;
 
     /**
      * Returns session start time.
      *
      * @return session start time
      */
-    std::chrono::time_point<std::chrono::system_clock>
-    getStartTime() const override;
+    std::chrono::time_point<std::chrono::system_clock> getStartTime() const override;
 
     /**
      * Returns session end time.
      *
      * @return session end time
      */
-    std::chrono::time_point<std::chrono::system_clock>
-    getEndTime() const override;
+    std::chrono::time_point<std::chrono::system_clock> getEndTime() const override;
 
     /**
      * Returns the time taken to execute this session.
@@ -125,8 +120,7 @@ class AbstractSession : public Session,
      * @param waitTimeout wait timeout for asynchronous messages in milliseconds
      * @return list of log entries generated for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getAllLogsWithTimeout(const int waitTimeout) const override;
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getAllLogsWithTimeout(const int waitTimeout) const override;
 
     /**
      * Returns all log entries generated for this session. If there are
@@ -135,8 +129,7 @@ class AbstractSession : public Session,
      *
      * @return list of log entries generated for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getAllLogs() const override;
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getAllLogs() const override;
 
     /**
      * Returns all log entries delivered for this session. Note that if there
@@ -145,8 +138,7 @@ class AbstractSession : public Session,
      *
      * @return list of log entries received for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>>
-    getLogs() const override;
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::internal::Log>>> getLogs() const override;
 
     /**
      * Returns all log entries generated for this session as a concatenated
@@ -157,8 +149,7 @@ class AbstractSession : public Session,
      * @return all log entries generated for this session as a concatenated
      * string
      */
-    std::string
-    getAllLogsAsStringWithTimeout(const int waitTimeout) const override;
+    std::string getAllLogsAsStringWithTimeout(const int waitTimeout) const override;
 
     /**
      * Returns all log entries generated for this session as a concatenated
@@ -221,8 +212,7 @@ class AbstractSession : public Session,
      *
      * @return session specific log redirection strategy
      */
-    ffmpegkit::internal::LogRedirectionStrategy
-    getLogRedirectionStrategy() const override;
+    ffmpegkit::internal::LogRedirectionStrategy getLogRedirectionStrategy() const override;
 
     /**
      * Returns whether there are still asynchronous messages being transmitted
@@ -253,8 +243,7 @@ class AbstractSession : public Session,
      *
      * @param returnCode return code of the execution
      */
-    void
-    complete(const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) override;
+    void complete(const std::shared_ptr<ffmpegkit::internal::ReturnCode> returnCode) override;
 
     /**
      * Ends running the session with a failure.

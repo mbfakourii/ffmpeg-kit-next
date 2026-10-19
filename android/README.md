@@ -69,9 +69,9 @@ For example, a default `API Level 24` build produces:
 
 ```
 prebuilt/bundle-android-aar-24-maven/
-└── com/arthenica/ffmpeg-kit-next/9.0.0/
-    ├── ffmpeg-kit-next-9.0.0.aar
-    └── ffmpeg-kit-next-9.0.0.pom
+└── com/arthenica/ffmpeg-kit-next/9.0.1/
+    ├── ffmpeg-kit-next-9.0.1.aar
+    └── ffmpeg-kit-next-9.0.1.pom
 ```
 
 ### 3. Using
@@ -89,7 +89,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.arthenica:ffmpeg-kit-next:9.0.0'
+    implementation 'com.arthenica:ffmpeg-kit-next:9.0.1'
 }
 ```
 

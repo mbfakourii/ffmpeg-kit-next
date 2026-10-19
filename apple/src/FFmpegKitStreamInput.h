@@ -38,10 +38,7 @@
 
 - (int)write:(NSData *)data timeout:(int)timeoutMs;
 
-- (int)write:(NSData *)data
-      offset:(NSUInteger)offset
-      length:(NSUInteger)length
-     timeout:(int)timeoutMs;
+- (int)write:(NSData *)data offset:(NSUInteger)offset length:(NSUInteger)length timeout:(int)timeoutMs;
 
 /**
  * Signals end of input without releasing the resource.

@@ -78,6 +78,18 @@ jobs:
             clang make patch file findutils gawk rsync \
             python3 perl ruby curl wget git zip unzip xz-utils tar gzip sed grep diffutils \
             bash which
+      - name: install Libtool with Emscripten support
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fL --retry 3 https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.xz -o libtool-2.5.4.tar.xz
+          tar -xf libtool-2.5.4.tar.xz
+          cd libtool-2.5.4
+          ./configure --prefix="$RUNNER_TEMP/libtool"
+          make -j2
+          make install
+          echo "$RUNNER_TEMP/libtool/bin" >> "$GITHUB_PATH"
+          echo "LIBTOOLIZE=$RUNNER_TEMP/libtool/bin/libtoolize" >> "$GITHUB_ENV"
+          echo "ACLOCAL_PATH=$RUNNER_TEMP/libtool/share/aclocal${ACLOCAL_PATH:+:$ACLOCAL_PATH}" >> "$GITHUB_ENV"
       - name: set up emscripten
         env:
           EMSCRIPTEN_VERSION: ${{ inputs.emscripten-version }}

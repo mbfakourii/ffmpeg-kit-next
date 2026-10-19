@@ -37,8 +37,7 @@ class FFmpegSession : public AbstractSession {
      * @param arguments command arguments
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments);
 
     /**
      * Builds a new FFmpeg session.
@@ -47,9 +46,7 @@ class FFmpegSession : public AbstractSession {
      * @param completeCallback  session specific complete callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback);
 
     /**
      * Builds a new FFmpeg session.
@@ -60,11 +57,7 @@ class FFmpegSession : public AbstractSession {
      * @param statisticsCallback    session specific statistics callback
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback,
-           ffmpegkit::StatisticsCallback statisticsCallback);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback);
 
     /**
      * Builds a new FFmpeg session.
@@ -76,12 +69,8 @@ class FFmpegSession : public AbstractSession {
      * @param logRedirectionStrategy  session specific log redirection strategy
      * @return created session
      */
-    static std::shared_ptr<ffmpegkit::FFmpegSession>
-    create(const std::list<std::string> &arguments,
-           ffmpegkit::FFmpegSessionCompleteCallback completeCallback,
-           ffmpegkit::LogCallback logCallback,
-           ffmpegkit::StatisticsCallback statisticsCallback,
-           ffmpegkit::LogRedirectionStrategy logRedirectionStrategy);
+    static std::shared_ptr<ffmpegkit::FFmpegSession> create(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback,
+                                                            ffmpegkit::LogRedirectionStrategy logRedirectionStrategy);
 
     /**
      * Returns the session specific statistics callback.
@@ -105,8 +94,7 @@ class FFmpegSession : public AbstractSession {
      * @param waitTimeout wait timeout for asynchronous messages in milliseconds
      * @return list of statistics entries generated for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getAllStatisticsWithTimeout(const int waitTimeout);
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getAllStatisticsWithTimeout(const int waitTimeout);
 
     /**
      * Returns all statistics entries generated for this session. If there are
@@ -116,8 +104,7 @@ class FFmpegSession : public AbstractSession {
      *
      * @return list of statistics entries generated for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getAllStatistics();
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getAllStatistics();
 
     /**
      * Returns all statistics entries delivered for this session. Note that if
@@ -126,8 +113,7 @@ class FFmpegSession : public AbstractSession {
      *
      * @return list of statistics entries received for this session
      */
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-    getStatistics();
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> getStatistics();
 
     /**
      * Returns the last received statistics entry.
@@ -180,16 +166,11 @@ class FFmpegSession : public AbstractSession {
      * @param statisticsCallback      session specific statistics callback
      * @param logRedirectionStrategy  session specific log redirection strategy
      */
-    FFmpegSession(const std::list<std::string> &arguments,
-                  ffmpegkit::FFmpegSessionCompleteCallback completeCallback,
-                  ffmpegkit::LogCallback logCallback,
-                  ffmpegkit::StatisticsCallback statisticsCallback,
-                  ffmpegkit::LogRedirectionStrategy logRedirectionStrategy);
+    FFmpegSession(const std::list<std::string> &arguments, ffmpegkit::FFmpegSessionCompleteCallback completeCallback, ffmpegkit::LogCallback logCallback, ffmpegkit::StatisticsCallback statisticsCallback, ffmpegkit::LogRedirectionStrategy logRedirectionStrategy);
 
     ffmpegkit::StatisticsCallback _statisticsCallback;
     FFmpegSessionCompleteCallback _completeCallback;
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>>
-        _statistics;
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Statistics>>> _statistics;
 };
 
 } // namespace ffmpegkit

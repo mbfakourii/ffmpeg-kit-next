@@ -112,7 +112,8 @@ export class FFmpegKitConfig {
     }
 
     // Enables/disables native log/statistics redirection. When disabled, JS log and
-    // statistics callbacks stop receiving events.
+    // statistics callbacks stop receiving events. enableRedirection() does nothing after
+    // shutdown.
     static enableRedirection() {
         return getFactory().enableRedirection();
     }
@@ -120,6 +121,39 @@ export class FFmpegKitConfig {
     static disableRedirection() {
         return getFactory().disableRedirection();
     }
+
+    /**
+     * Permanently shuts FFmpegKit down and immediately refuses new executions.
+     * Running FFmpeg sessions are cancelled, streams closed, and undelivered log
+     * and statistics messages dropped. Native results are preserved; output and
+     * completion callbacks are not guaranteed. Cancel and await required results
+     * before shutdown when predictable results matter.
+     *
+     * The first call allows completion callbacks for at most two seconds, then
+     * up to one second for history cleanup, within its total wait budget. Queued
+     * work stays on its original native worker; if served after shutdown it fails
+     * without execution, and after grace its completion callbacks are dropped.
+     * New submissions fail with "FFmpegKit has been shut down" without callbacks.
+     * Session and global completion callbacks have separate cutoff checks.
+     *
+     * Running FFprobe/media information cannot be cancelled and may outlast grace.
+     * Retries only wait with a fresh deadline; they never restart grace. True means
+     * counted native work/history cleanup finished and running results reached the
+     * page; queued workers may still hold data and later release consumer captures.
+     * Keep cleanup code and state alive until all owners have released their data.
+     *
+     * The worker remains available until uninit(), after which no worker restarts.
+     * @param {number} waitTimeout Total wait budget in milliseconds; zero provides
+     * no grace on the first call and makes one nonblocking worker round trip;
+     * negative waits indefinitely for counted work, with grace still bounded.
+     * @returns {Promise<boolean>} Whether shutdown finished within the budget.
+     */
+    static shutdown(waitTimeout) { return getFactory().shutdown(waitTimeout); }
+
+    /**
+     * @returns {boolean} whether shutdown() was called on this page.
+     */
+    static isShutdown() { return getFactory().isShutdown(); }
 
     static setFontconfigConfigurationPath(path) {
         return getFactory().setFontconfigConfigurationPath(path);
@@ -237,6 +271,8 @@ export class FFmpegKitConfig {
     // ---- Low-level session execute primitives -------------------------------------
     // Run an already-created session. The sync forms resolve once the run COMPLETES; the
     // async forms resolve after the request is posted (completion arrives via callback).
+    // After shutdown the session fails with "FFmpegKit has been shut down" and does not
+    // run or invoke completion callbacks.
     static ffmpegExecute(ffmpegSession) {
         return getFactory().ffmpegExecute(ffmpegSession);
     }

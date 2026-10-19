@@ -22,43 +22,31 @@
 #include "FFmpegKitProtocolUrl.h"
 #include <stdexcept>
 
-std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>
-ffmpegkit::FFmpegKitInputBuffer::fromByteArray(
-    const std::vector<uint8_t> &data, const std::string &extension) {
+std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer> ffmpegkit::FFmpegKitInputBuffer::fromByteArray(const std::vector<uint8_t> &data, const std::string &extension) {
     long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitInputBuffer(data);
     if (id == 0) {
         throw std::runtime_error("Failed to register FFmpegKit input buffer.");
     }
 
-    return std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>(
-        new ffmpegkit::FFmpegKitInputBuffer(id, extension));
+    return std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>(new ffmpegkit::FFmpegKitInputBuffer(id, extension));
 }
 
-std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>
-ffmpegkit::FFmpegKitInputBuffer::fromBytes(const uint8_t *data,
-                                           const size_t size,
-                                           const std::string &extension) {
+std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer> ffmpegkit::FFmpegKitInputBuffer::fromBytes(const uint8_t *data, const size_t size, const std::string &extension) {
     if (data == NULL && size > 0) {
-        throw std::invalid_argument(
-            "data must not be null when size is positive");
+        throw std::invalid_argument("data must not be null when size is positive");
     }
 
-    long id =
-        ffmpegkit::FFmpegKitConfig::registerFFmpegKitInputBuffer(data, size);
+    long id = ffmpegkit::FFmpegKitConfig::registerFFmpegKitInputBuffer(data, size);
     if (id == 0) {
         throw std::runtime_error("Failed to register FFmpegKit input buffer.");
     }
 
-    return std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>(
-        new ffmpegkit::FFmpegKitInputBuffer(id, extension));
+    return std::shared_ptr<ffmpegkit::FFmpegKitInputBuffer>(new ffmpegkit::FFmpegKitInputBuffer(id, extension));
 }
 
 ffmpegkit::FFmpegKitInputBuffer::~FFmpegKitInputBuffer() { close(); }
 
-ffmpegkit::FFmpegKitInputBuffer::FFmpegKitInputBuffer(
-    const long id, const std::string &extension)
-    : _id{id}, _url{ffmpegkit::buildFFmpegKitUrl("ffkitmem", id, extension)},
-      _closed{false} {}
+ffmpegkit::FFmpegKitInputBuffer::FFmpegKitInputBuffer(const long id, const std::string &extension) : _id{id}, _url{ffmpegkit::buildFFmpegKitUrl("ffkitmem", id, extension)}, _closed{false} {}
 
 std::string ffmpegkit::FFmpegKitInputBuffer::getUrl() {
     ensureOpen();

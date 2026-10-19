@@ -26,21 +26,16 @@ static const int StreamTypeOutput = 2;
 
 @interface FFmpegKitConfig (FFmpegKitStreamOutputSupport)
 + (long)registerFFmpegKitStream:(long)capacity type:(int)type;
-+ (NSData *)readFFmpegKitStream:(long)streamId
-                       maxBytes:(int)maxBytes
-                        timeout:(int)timeoutMs;
++ (NSData *)readFFmpegKitStream:(long)streamId maxBytes:(int)maxBytes timeout:(int)timeoutMs;
 + (void)unregisterFFmpegKitStream:(long)streamId;
 @end
 
 @interface FFmpegKitInputBuffer (FFmpegKitUrlSupport)
-+ (NSString *)urlWithProtocol:(NSString *)protocol
-                   resourceId:(long)resourceId
-                    extension:(NSString *)extension;
++ (NSString *)urlWithProtocol:(NSString *)protocol resourceId:(long)resourceId extension:(NSString *)extension;
 @end
 
 @interface FFmpegKitStreamOutput ()
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension;
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension;
 - (void)ensureOpen;
 @end
 
@@ -51,34 +46,27 @@ static const int StreamTypeOutput = 2;
 }
 
 + (instancetype)create:(NSString *)extension {
-    return [FFmpegKitStreamOutput create:extension
-                                capacity:DefaultStreamCapacity];
+    return [FFmpegKitStreamOutput create:extension capacity:DefaultStreamCapacity];
 }
 
 + (instancetype)create:(NSString *)extension capacity:(long)capacity {
     if (capacity <= 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"capacity must be positive"];
+        [NSException raise:NSInvalidArgumentException format:@"capacity must be positive"];
     }
 
-    long resourceId =
-        [FFmpegKitConfig registerFFmpegKitStream:capacity type:StreamTypeOutput];
+    long resourceId = [FFmpegKitConfig registerFFmpegKitStream:capacity type:StreamTypeOutput];
     if (resourceId == 0) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"Failed to register FFmpegKit output stream."];
+        [NSException raise:NSInternalInconsistencyException format:@"Failed to register FFmpegKit output stream."];
     }
 
     return [[self alloc] initWithResourceId:resourceId extension:extension];
 }
 
-- (instancetype)initWithResourceId:(long)resourceId
-                         extension:(NSString *)extension {
+- (instancetype)initWithResourceId:(long)resourceId extension:(NSString *)extension {
     self = [super init];
     if (self) {
         _resourceId = resourceId;
-        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitstream"
-                                          resourceId:resourceId
-                                           extension:extension];
+        _url = [FFmpegKitInputBuffer urlWithProtocol:@"ffkitstream" resourceId:resourceId extension:extension];
         _closed = NO;
     }
 
@@ -97,13 +85,10 @@ static const int StreamTypeOutput = 2;
 - (NSData *)read:(int)maxBytes timeout:(int)timeoutMs {
     [self ensureOpen];
     if (maxBytes < 0) {
-        [NSException raise:NSInvalidArgumentException
-                    format:@"maxBytes must not be negative"];
+        [NSException raise:NSInvalidArgumentException format:@"maxBytes must not be negative"];
     }
 
-    return [FFmpegKitConfig readFFmpegKitStream:_resourceId
-                                       maxBytes:maxBytes
-                                        timeout:timeoutMs];
+    return [FFmpegKitConfig readFFmpegKitStream:_resourceId maxBytes:maxBytes timeout:timeoutMs];
 }
 
 - (void)close {
@@ -115,8 +100,7 @@ static const int StreamTypeOutput = 2;
 
 - (void)ensureOpen {
     if (_closed) {
-        [NSException raise:NSInternalInconsistencyException
-                    format:@"FFmpegKit output stream is closed."];
+        [NSException raise:NSInternalInconsistencyException format:@"FFmpegKit output stream is closed."];
     }
 }
 

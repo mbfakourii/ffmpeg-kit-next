@@ -38,11 +38,7 @@ class MediaInformationJsonParser {
      * @param ffprobeJsonOutput FFprobe json output
      * @return created media information or nullptr if a parsing error occurs
      */
-    static std::shared_ptr<ffmpegkit::MediaInformation>
-    from(const std::string &ffprobeJsonOutput) {
-        return ffmpegkit::detail::adoptMediaInformation(
-            ffk_media_information_parser_from(ffprobeJsonOutput.c_str()));
-    }
+    static std::shared_ptr<ffmpegkit::MediaInformation> from(const std::string &ffprobeJsonOutput) { return ffmpegkit::detail::adoptMediaInformation(ffk_media_information_parser_from(ffprobeJsonOutput.c_str())); }
 
     /**
      * Extracts media information from the given FFprobe json output.
@@ -51,11 +47,8 @@ class MediaInformationJsonParser {
      * @return created media information
      * @throws ffmpegkit::Exception if a parsing error occurs
      */
-    static std::shared_ptr<ffmpegkit::MediaInformation>
-    fromWithError(const std::string &ffprobeJsonOutput) {
-        FFKMediaInformation *handle =
-            ffk_media_information_parser_from_with_error(
-                ffprobeJsonOutput.c_str());
+    static std::shared_ptr<ffmpegkit::MediaInformation> fromWithError(const std::string &ffprobeJsonOutput) {
+        FFKMediaInformation *handle = ffk_media_information_parser_from_with_error(ffprobeJsonOutput.c_str());
         ffmpegkit::detail::checkError();
         return ffmpegkit::detail::adoptMediaInformation(handle);
     }

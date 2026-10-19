@@ -84,7 +84,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModuleSpec {
 
   public static final String LIBRARY_NAME = "ffmpeg-kit-react-native";
-  public static final String LIBRARY_VERSION = "9.0.0";
   public static final String PLATFORM_NAME = "android";
 
   // LOG CLASS
@@ -134,6 +133,51 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
   @Nullable
   private final Object sessionDeleteListener;
 
+  // Binding references survive native history cleanup; public history still uses native state.
+  private final Map<Long, Session> shutdownSessions = new ConcurrentHashMap<>();
+  private volatile boolean retainShutdownSessions;
+
+  private Session findSession(long id) {
+      Session session = FFmpegKitConfig.getSession(id);
+      return session != null ? session : shutdownSessions.get(id);
+  }
+
+  private Session retainSessionForShutdown(Session session) {
+      if (retainShutdownSessions || FFmpegKitConfig.isShutdown()) {
+          shutdownSessions.put(session.getSessionId(), session);
+      }
+      return session;
+  }
+
+  @ReactMethod
+  public void shutdown(final double waitTimeout, final Promise promise) {
+      if (!Double.isFinite(waitTimeout) || waitTimeout != Math.rint(waitTimeout) || waitTimeout < Integer.MIN_VALUE || waitTimeout > Integer.MAX_VALUE) {
+          promise.reject("INVALID_ARGUMENTS", "waitTimeout must be a signed 32-bit integer in milliseconds.");
+          return;
+      }
+      retainShutdownSessions = true;
+      for (Session session : FFmpegKitConfig.getSessions()) {
+          shutdownSessions.put(session.getSessionId(), session);
+      }
+      // Execution and stream IO may occupy every fixed-pool worker. Never queue this wait there.
+      try {
+          new Thread(() -> {
+              try {
+                  promise.resolve(FFmpegKitConfig.shutdown((int)waitTimeout));
+              } catch (final Exception exception) {
+                  promise.reject("SHUTDOWN_FAILED", exception.getMessage(), exception);
+              }
+          }, "ffmpeg-kit-react-native-shutdown").start();
+      } catch (final Exception exception) {
+          promise.reject("SHUTDOWN_FAILED", exception.getMessage(), exception);
+      }
+  }
+
+  @ReactMethod
+  public void isShutdown(final Promise promise) {
+      promise.resolve(FFmpegKitConfig.isShutdown());
+  }
+
   // FFKIT PROTOCOL REGISTRIES (keyed by generated protocol url)
   private final Map<String, FFmpegKitInputBuffer> inputBufferRegistry = new ConcurrentHashMap<>();
   private final Map<String, FFmpegKitOutputBuffer> outputBufferRegistry = new ConcurrentHashMap<>();
@@ -151,8 +195,9 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @Override
   public void invalidate() {
-    unregisterSessionDeleteListener();
-    super.invalidate();
+      shutdownSessions.clear();
+      unregisterSessionDeleteListener();
+      super.invalidate();
   }
 
   @ReactMethod
@@ -168,117 +213,117 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void abstractSessionGetEndTime(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      final Date endTime = session.getEndTime();
-      if (endTime == null) {
-        promise.resolve(null);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.resolve(endTime.getTime());
-      }
+          final Date endTime = session.getEndTime();
+          if (endTime == null) {
+              promise.resolve(null);
+          } else {
+              promise.resolve(endTime.getTime());
+          }
     }
   }
 
   @ReactMethod
   public void abstractSessionGetDuration(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      promise.resolve((double) session.getDuration());
-    }
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
+      } else {
+          promise.resolve((double)session.getDuration());
+      }
   }
 
   @ReactMethod
   public void abstractSessionGetAllLogs(final double sessionId, final Double waitTimeout, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      final int timeout;
-      if (isValidPositiveNumber(waitTimeout)) {
-        timeout = waitTimeout.intValue();
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+          final int timeout;
+          if (isValidPositiveNumber(waitTimeout)) {
+              timeout = waitTimeout.intValue();
+          } else {
+              timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+          }
+          final List<com.arthenica.ffmpegkit.Log> allLogs = session.getAllLogs(timeout);
+          promise.resolve(toLogArray(allLogs));
       }
-      final List<com.arthenica.ffmpegkit.Log> allLogs = session.getAllLogs(timeout);
-      promise.resolve(toLogArray(allLogs));
-    }
   }
 
   @ReactMethod
   public void abstractSessionGetLogs(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      final List<com.arthenica.ffmpegkit.Log> allLogs = session.getLogs();
-      promise.resolve(toLogArray(allLogs));
-    }
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
+      } else {
+          final List<com.arthenica.ffmpegkit.Log> allLogs = session.getLogs();
+          promise.resolve(toLogArray(allLogs));
+      }
   }
 
   @ReactMethod
   public void abstractSessionGetAllLogsAsString(final double sessionId, final Double waitTimeout, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      final int timeout;
-      if (isValidPositiveNumber(waitTimeout)) {
-        timeout = waitTimeout.intValue();
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+          final int timeout;
+          if (isValidPositiveNumber(waitTimeout)) {
+              timeout = waitTimeout.intValue();
+          } else {
+              timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+          }
+          final String allLogsAsString = session.getAllLogsAsString(timeout);
+          promise.resolve(allLogsAsString);
       }
-      final String allLogsAsString = session.getAllLogsAsString(timeout);
-      promise.resolve(allLogsAsString);
-    }
   }
 
   @ReactMethod
   public void abstractSessionGetState(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      promise.resolve(session.getState().ordinal());
-    }
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
+      } else {
+          promise.resolve(session.getState().ordinal());
+      }
   }
 
   @ReactMethod
   public void abstractSessionGetReturnCode(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      final ReturnCode returnCode = session.getReturnCode();
-      if (returnCode == null) {
-        promise.resolve(null);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.resolve(returnCode.getValue());
-      }
+          final ReturnCode returnCode = session.getReturnCode();
+          if (returnCode == null) {
+              promise.resolve(null);
+          } else {
+              promise.resolve(returnCode.getValue());
+          }
     }
   }
 
   @ReactMethod
   public void abstractSessionGetFailStackTrace(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      promise.resolve(session.getFailStackTrace());
-    }
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
+      } else {
+          promise.resolve(session.getFailStackTrace());
+      }
   }
 
   @ReactMethod
   public void thereAreAsynchronousMessagesInTransmit(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      promise.resolve(session.thereAreAsynchronousMessagesInTransmit());
-    }
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
+      } else {
+          promise.resolve(session.thereAreAsynchronousMessagesInTransmit());
+      }
   }
 
   // ArchDetect
@@ -292,42 +337,42 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void ffmpegSession(final ReadableArray readableArray, final Promise promise) {
-    promise.resolve(toMap(FFmpegSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled, this::emitStatisticsIfEnabled, LogRedirectionStrategy.NEVER_PRINT_LOGS)));
+      promise.resolve(toMap(retainSessionForShutdown(FFmpegSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled, this::emitStatisticsIfEnabled, LogRedirectionStrategy.NEVER_PRINT_LOGS))));
   }
 
   @ReactMethod
   public void ffmpegSessionGetAllStatistics(final double sessionId, final Double waitTimeout, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFmpeg()) {
-        final int timeout;
-        if (isValidPositiveNumber(waitTimeout)) {
-          timeout = waitTimeout.intValue();
-        } else {
-          timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
-        }
-        final List<Statistics> allStatistics = ((FFmpegSession) session).getAllStatistics(timeout);
-        promise.resolve(toStatisticsArray(allStatistics));
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFmpeg()) {
+              final int timeout;
+              if (isValidPositiveNumber(waitTimeout)) {
+                  timeout = waitTimeout.intValue();
+              } else {
+                  timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+              }
+              final List<Statistics> allStatistics = ((FFmpegSession)session).getAllStatistics(timeout);
+              promise.resolve(toStatisticsArray(allStatistics));
+          } else {
+              promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void ffmpegSessionGetStatistics(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFmpeg()) {
-        final List<Statistics> statistics = ((FFmpegSession) session).getStatistics();
-        promise.resolve(toStatisticsArray(statistics));
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFmpeg()) {
+              final List<Statistics> statistics = ((FFmpegSession)session).getStatistics();
+              promise.resolve(toStatisticsArray(statistics));
+          } else {
+              promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
@@ -335,14 +380,14 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void ffprobeSession(final ReadableArray readableArray, final Promise promise) {
-    promise.resolve(toMap(FFprobeSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled, LogRedirectionStrategy.NEVER_PRINT_LOGS)));
+      promise.resolve(toMap(retainSessionForShutdown(FFprobeSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled, LogRedirectionStrategy.NEVER_PRINT_LOGS))));
   }
 
   // MediaInformationSession
 
   @ReactMethod
   public void mediaInformationSession(final ReadableArray readableArray, final Promise promise) {
-    promise.resolve(toMap(MediaInformationSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled)));
+      promise.resolve(toMap(retainSessionForShutdown(MediaInformationSession.create(toArgumentsArray(readableArray), this::emitSession, this::emitLogIfEnabled))));
   }
 
   // MediaInformationJsonParser
@@ -512,103 +557,103 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void ffmpegSessionExecute(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFmpeg()) {
-        final FFmpegSessionExecuteTask ffmpegSessionExecuteTask = new FFmpegSessionExecuteTask((FFmpegSession) session, promise);
-        asyncExecutorService.submit(ffmpegSessionExecuteTask);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFmpeg()) {
+              final FFmpegSessionExecuteTask ffmpegSessionExecuteTask = new FFmpegSessionExecuteTask((FFmpegSession)session, promise);
+              asyncExecutorService.submit(ffmpegSessionExecuteTask);
+          } else {
+              promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void ffprobeSessionExecute(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFprobe()) {
-        final FFprobeSessionExecuteTask ffprobeSessionExecuteTask = new FFprobeSessionExecuteTask((FFprobeSession) session, promise);
-        asyncExecutorService.submit(ffprobeSessionExecuteTask);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFPROBE_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFprobe()) {
+              final FFprobeSessionExecuteTask ffprobeSessionExecuteTask = new FFprobeSessionExecuteTask((FFprobeSession)session, promise);
+              asyncExecutorService.submit(ffprobeSessionExecuteTask);
+          } else {
+              promise.reject("NOT_FFPROBE_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void mediaInformationSessionExecute(final double sessionId, final Double waitTimeout, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isMediaInformation()) {
-        final int timeout;
-        if (isValidPositiveNumber(waitTimeout)) {
-          timeout = waitTimeout.intValue();
-        } else {
-          timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
-        }
-        final MediaInformationSessionExecuteTask mediaInformationSessionExecuteTask = new MediaInformationSessionExecuteTask((MediaInformationSession) session, timeout, promise);
-        asyncExecutorService.submit(mediaInformationSessionExecuteTask);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isMediaInformation()) {
+              final int timeout;
+              if (isValidPositiveNumber(waitTimeout)) {
+                  timeout = waitTimeout.intValue();
+              } else {
+                  timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+              }
+              final MediaInformationSessionExecuteTask mediaInformationSessionExecuteTask = new MediaInformationSessionExecuteTask((MediaInformationSession)session, timeout, promise);
+              asyncExecutorService.submit(mediaInformationSessionExecuteTask);
+          } else {
+              promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void asyncFFmpegSessionExecute(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFmpeg()) {
-        FFmpegKitConfig.asyncFFmpegExecute((FFmpegSession) session);
-        promise.resolve(null);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFmpeg()) {
+              FFmpegKitConfig.asyncFFmpegExecute((FFmpegSession)session);
+              promise.resolve(null);
+          } else {
+              promise.reject("NOT_FFMPEG_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void asyncFFprobeSessionExecute(final double sessionId, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isFFprobe()) {
-        FFmpegKitConfig.asyncFFprobeExecute((FFprobeSession) session);
-        promise.resolve(null);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_FFPROBE_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isFFprobe()) {
+              FFmpegKitConfig.asyncFFprobeExecute((FFprobeSession)session);
+              promise.resolve(null);
+          } else {
+              promise.reject("NOT_FFPROBE_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
   @ReactMethod
   public void asyncMediaInformationSessionExecute(final double sessionId, final Double waitTimeout, final Promise promise) {
-    Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isMediaInformation()) {
-        final int timeout;
-        if (isValidPositiveNumber(waitTimeout)) {
-          timeout = waitTimeout.intValue();
-        } else {
-          timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
-        }
-        FFmpegKitConfig.asyncGetMediaInformationExecute((MediaInformationSession) session, timeout);
-        promise.resolve(null);
+      Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isMediaInformation()) {
+              final int timeout;
+              if (isValidPositiveNumber(waitTimeout)) {
+                  timeout = waitTimeout.intValue();
+              } else {
+                  timeout = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT;
+              }
+              FFmpegKitConfig.asyncGetMediaInformationExecute((MediaInformationSession)session, timeout);
+              promise.resolve(null);
+          } else {
+              promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
@@ -618,14 +663,15 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
   }
 
   @ReactMethod
-  public void printLoadConfirmation(final Promise promise) {
-    if (loadedLogged.compareAndSet(false, true)) {
-      final String packageName = Packages.getPackageName();
-      final String packageNamePart = packageName.isEmpty() ? "" : packageName + "-";
-      Log.d(LIBRARY_NAME, String.format("Loaded ffmpeg-kit-next-react-native-%s%s-%s-%s.", packageNamePart, PLATFORM_NAME, AbiDetect.getAbi(), LIBRARY_VERSION));
-    }
+  public void printLoadConfirmation(final String version, final Promise promise) {
+      if (loadedLogged.compareAndSet(false, true)) {
+          final String packageName = Packages.getPackageName();
+          final String packageNamePart = packageName.isEmpty() ? "" : packageName + "-";
+          final String versionPart = version != null && !version.isEmpty() ? version : "unknown";
+          Log.d(LIBRARY_NAME, String.format("Loaded ffmpeg-kit-next-react-native-%s%s-%s-%s.", packageNamePart, PLATFORM_NAME, AbiDetect.getAbi(), versionPart));
+      }
 
-    promise.resolve(null);
+      promise.resolve(null);
   }
 
   @ReactMethod
@@ -675,12 +721,14 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
   @ReactMethod
   public void clearSessions(final Promise promise) {
     FFmpegKitConfig.clearSessions();
+    shutdownSessions.clear();
     promise.resolve(null);
   }
 
   @ReactMethod
   public void deleteSession(final double sessionId, final Promise promise) {
     FFmpegKitConfig.deleteSession((long) sessionId);
+    shutdownSessions.remove((long)sessionId);
     promise.resolve(null);
   }
 
@@ -867,21 +915,21 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void getMediaInformation(final double sessionId, final Promise promise) {
-    final Session session = FFmpegKitConfig.getSession((long) sessionId);
-    if (session == null) {
-      promise.reject("SESSION_NOT_FOUND", "Session not found.");
-    } else {
-      if (session.isMediaInformation()) {
-        final MediaInformationSession mediaInformationSession = (MediaInformationSession) session;
-        final MediaInformation mediaInformation = mediaInformationSession.getMediaInformation();
-        if (mediaInformation != null) {
-          promise.resolve(toMap(mediaInformation));
-        } else {
-          promise.resolve(null);
-        }
+      final Session session = findSession((long)sessionId);
+      if (session == null) {
+          promise.reject("SESSION_NOT_FOUND", "Session not found.");
       } else {
-        promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
-      }
+          if (session.isMediaInformation()) {
+              final MediaInformationSession mediaInformationSession = (MediaInformationSession)session;
+              final MediaInformation mediaInformation = mediaInformationSession.getMediaInformation();
+              if (mediaInformation != null) {
+                  promise.resolve(toMap(mediaInformation));
+              } else {
+                  promise.resolve(null);
+              }
+          } else {
+              promise.reject("NOT_MEDIA_INFORMATION_SESSION", "A session is found but it does not have the correct type.");
+          }
     }
   }
 
@@ -1094,8 +1142,9 @@ public class FFmpegKitReactNativeModule extends NativeFFmpegKitReactNativeModule
 
   @ReactMethod
   public void uninit(final Promise promise) {
-    this.asyncExecutorService.shutdown();
-    promise.resolve(null);
+      shutdownSessions.clear();
+      this.asyncExecutorService.shutdown();
+      promise.resolve(null);
   }
 
   protected void enableLogs() {

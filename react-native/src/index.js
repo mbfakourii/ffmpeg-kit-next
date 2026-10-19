@@ -2,6 +2,8 @@ import {NativeEventEmitter} from 'react-native';
 
 import FFmpegKitReactNativeModule from './NativeFFmpegKitReactNativeModule';
 
+const {version : packageVersion} = require('../package.json');
+
 const ffmpegSessionCompleteCallbackMap = new Map()
 const ffprobeSessionCompleteCallbackMap = new Map()
 const mediaInformationSessionCompleteCallbackMap = new Map()
@@ -595,10 +597,10 @@ export class AbstractSession extends Session {
    */
   async getReturnCode() {
     const returnCodeValue = await FFmpegKitReactNativeModule.abstractSessionGetReturnCode(this.getSessionId());
-    if (returnCodeValue === undefined) {
-      return undefined;
+    if (returnCodeValue == null) {
+        return undefined;
     } else {
-      return new ReturnCode(returnCodeValue);
+        return new ReturnCode(returnCodeValue);
     }
   }
 
@@ -1064,6 +1066,34 @@ export class FFmpegKitConfig {
    */
   static async init(printLoadConfirmation = true) {
     await FFmpegKitInitializer.initialize(printLoadConfirmation);
+  }
+
+  /**
+   * Permanently shuts down the native library. The signed 32-bit timeout is a
+   * total wait budget in milliseconds: zero does not wait, negative waits without
+   * limit. Retries wait again without restarting native completion grace.
+   *
+   * JavaScript callbacks are released/dropped immediately. In-flight results and
+   * completion delivery are not guaranteed. True means counted native work and
+   * history cleanup finished; it does not await user callback Promises or permit
+   * unloading an engine. Retained session getters remain usable until delete/clear.
+   */
+  static async shutdown(waitTimeout) {
+      if (!Number.isInteger(waitTimeout) || waitTimeout < -2147483648 || waitTimeout > 2147483647) {
+          throw new RangeError('waitTimeout must be a signed 32-bit integer in milliseconds.');
+      }
+      FFmpegKitFactory.beginShutdown();
+      await this.init();
+      return FFmpegKitFactory.requireBoolean(await FFmpegKitReactNativeModule.shutdown(waitTimeout));
+  }
+
+  /** Returns whether native shutdown has begun, even if work remains. */
+  static async isShutdown() {
+      await this.init();
+      const shutdown = FFmpegKitFactory.requireBoolean(await FFmpegKitReactNativeModule.isShutdown());
+      if (shutdown)
+          FFmpegKitFactory.beginShutdown();
+      return shutdown;
   }
 
   /**
@@ -1884,6 +1914,29 @@ export class FFmpegKitConfig {
 
 class FFmpegKitFactory {
 
+    static #shutdown = false;
+
+    static beginShutdown() {
+        this.#shutdown = true;
+        this.deleteSessions();
+        this.#ffmpegSessionCompleteCallback = undefined;
+        this.#ffprobeSessionCompleteCallback = undefined;
+        this.#mediaInformationSessionCompleteCallback = undefined;
+        this.#logCallback = undefined;
+        this.#statisticsCallback = undefined;
+    }
+
+    static isShutdown() { return this.#shutdown; }
+
+    static requireBoolean(value) {
+        if (typeof value !== 'boolean') {
+            const error = new Error('Native shutdown API returned a non-boolean response.');
+            error.code = 'INVALID_RESPONSE';
+            throw error;
+        }
+        return value;
+    }
+
   static #ffmpegSessionCompleteCallback = undefined;
   static #ffprobeSessionCompleteCallback = undefined;
   static #mediaInformationSessionCompleteCallback = undefined;
@@ -1908,24 +1961,22 @@ class FFmpegKitFactory {
   }
 
   static mapToSession(sessionMap) {
-    if (sessionMap !== undefined) {
-      switch (sessionMap.type) {
-        case 2:
-          return AbstractSession.createFFprobeSessionFromMap(sessionMap);
-        case 3:
-          return AbstractSession.createMediaInformationSessionFromMap(sessionMap);
-        case 1:
-        default:
-          return AbstractSession.createFFmpegSessionFromMap(sessionMap);
+      if (sessionMap != null) {
+          switch (sessionMap.type) {
+          case 2:
+              return AbstractSession.createFFprobeSessionFromMap(sessionMap);
+          case 3:
+              return AbstractSession.createMediaInformationSessionFromMap(sessionMap);
+          case 1:
+          default:
+              return AbstractSession.createFFmpegSessionFromMap(sessionMap);
+          }
+      } else {
+          return undefined;
       }
-    } else {
-      return undefined;
-    }
   }
 
-  static getVersion() {
-    return "9.0.0";
-  }
+  static getVersion() { return packageVersion; }
 
   static getLogRedirectionStrategy(sessionId) {
     return logRedirectionStrategyMap.get(sessionId);
@@ -1958,9 +2009,11 @@ class FFmpegKitFactory {
   }
 
   static setLogCallback(sessionId, logCallback) {
-    if (logCallback !== undefined) {
-      logCallbackMap.set(sessionId, logCallback);
-    }
+      if (this.#shutdown)
+          return;
+      if (logCallback !== undefined) {
+          logCallbackMap.set(sessionId, logCallback);
+      }
   }
 
   static getGlobalLogCallback() {
@@ -1968,7 +2021,9 @@ class FFmpegKitFactory {
   }
 
   static setGlobalLogCallback(logCallback) {
-    this.#logCallback = logCallback;
+      if (this.#shutdown)
+          return;
+      this.#logCallback = logCallback;
   }
 
   static getStatisticsCallback(sessionId) {
@@ -1976,9 +2031,11 @@ class FFmpegKitFactory {
   }
 
   static setStatisticsCallback(sessionId, statisticsCallback) {
-    if (statisticsCallback !== undefined) {
-      statisticsCallbackMap.set(sessionId, statisticsCallback);
-    }
+      if (this.#shutdown)
+          return;
+      if (statisticsCallback !== undefined) {
+          statisticsCallbackMap.set(sessionId, statisticsCallback);
+      }
   }
 
   static getGlobalStatisticsCallback() {
@@ -1986,7 +2043,9 @@ class FFmpegKitFactory {
   }
 
   static setGlobalStatisticsCallback(statisticsCallback) {
-    this.#statisticsCallback = statisticsCallback;
+      if (this.#shutdown)
+          return;
+      this.#statisticsCallback = statisticsCallback;
   }
 
   static getFFmpegSessionCompleteCallback(sessionId) {
@@ -1994,9 +2053,11 @@ class FFmpegKitFactory {
   }
 
   static setFFmpegSessionCompleteCallback(sessionId, completeCallback) {
-    if (completeCallback !== undefined) {
-      ffmpegSessionCompleteCallbackMap.set(sessionId, completeCallback);
-    }
+      if (this.#shutdown)
+          return;
+      if (completeCallback !== undefined) {
+          ffmpegSessionCompleteCallbackMap.set(sessionId, completeCallback);
+      }
   }
 
   static getGlobalFFmpegSessionCompleteCallback() {
@@ -2004,7 +2065,9 @@ class FFmpegKitFactory {
   }
 
   static setGlobalFFmpegSessionCompleteCallback(completeCallback) {
-    this.#ffmpegSessionCompleteCallback = completeCallback;
+      if (this.#shutdown)
+          return;
+      this.#ffmpegSessionCompleteCallback = completeCallback;
   }
 
   static getFFprobeSessionCompleteCallback(sessionId) {
@@ -2012,9 +2075,11 @@ class FFmpegKitFactory {
   }
 
   static setFFprobeSessionCompleteCallback(sessionId, completeCallback) {
-    if (completeCallback !== undefined) {
-      ffprobeSessionCompleteCallbackMap.set(sessionId, completeCallback);
-    }
+      if (this.#shutdown)
+          return;
+      if (completeCallback !== undefined) {
+          ffprobeSessionCompleteCallbackMap.set(sessionId, completeCallback);
+      }
   }
 
   static getGlobalFFprobeSessionCompleteCallback() {
@@ -2022,7 +2087,9 @@ class FFmpegKitFactory {
   }
 
   static setGlobalFFprobeSessionCompleteCallback(completeCallback) {
-    this.#ffprobeSessionCompleteCallback = completeCallback;
+      if (this.#shutdown)
+          return;
+      this.#ffprobeSessionCompleteCallback = completeCallback;
   }
 
   static getMediaInformationSessionCompleteCallback(sessionId) {
@@ -2030,9 +2097,11 @@ class FFmpegKitFactory {
   }
 
   static setMediaInformationSessionCompleteCallback(sessionId, completeCallback) {
-    if (completeCallback !== undefined) {
-      mediaInformationSessionCompleteCallbackMap.set(sessionId, completeCallback);
-    }
+      if (this.#shutdown)
+          return;
+      if (completeCallback !== undefined) {
+          mediaInformationSessionCompleteCallbackMap.set(sessionId, completeCallback);
+      }
   }
 
   static getGlobalMediaInformationSessionCompleteCallback() {
@@ -2040,7 +2109,9 @@ class FFmpegKitFactory {
   }
 
   static setGlobalMediaInformationSessionCompleteCallback(completeCallback) {
-    this.#mediaInformationSessionCompleteCallback = completeCallback;
+      if (this.#shutdown)
+          return;
+      this.#mediaInformationSessionCompleteCallback = completeCallback;
   }
 
   static setLogLevel(logLevel) {
@@ -2086,20 +2157,22 @@ class FFmpegKitInitializer {
   static #eventEmitter = new FFmpegKitReactNativeEventEmitter();
 
   static processLogCallbackEvent(event) {
-    const log = FFmpegKitFactory.mapToLog(event)
-    const sessionId = event.sessionId;
-    const level = event.level;
-    const text = event.message;
-    const activeLogLevel = FFmpegKitConfig.getLogLevel();
-    let globalCallbackDefined = false;
-    let sessionCallbackDefined = false;
-    let activeLogRedirectionStrategy = FFmpegKitConfig.getLogRedirectionStrategy();
+      if (FFmpegKitFactory.isShutdown())
+          return;
+      const log = FFmpegKitFactory.mapToLog(event)
+      const sessionId = event.sessionId;
+      const level = event.level;
+      const text = event.message;
+      const activeLogLevel = FFmpegKitConfig.getLogLevel();
+      let globalCallbackDefined = false;
+      let sessionCallbackDefined = false;
+      let activeLogRedirectionStrategy = FFmpegKitConfig.getLogRedirectionStrategy();
 
-    // AV_LOG_STDERR logs are always redirected
-    if ((activeLogLevel === Level.AV_LOG_QUIET && level !== Level.AV_LOG_STDERR) || level > activeLogLevel) {
-      // LOG NEITHER PRINTED NOR FORWARDED
-      return;
-    }
+      // AV_LOG_STDERR logs are always redirected
+      if ((activeLogLevel === Level.AV_LOG_QUIET && level !== Level.AV_LOG_STDERR) || level > activeLogLevel) {
+          // LOG NEITHER PRINTED NOR FORWARDED
+          return;
+      }
 
     if (FFmpegKitFactory.getLogRedirectionStrategy(sessionId) !== undefined) {
       activeLogRedirectionStrategy = FFmpegKitFactory.getLogRedirectionStrategy(sessionId);
@@ -2127,6 +2200,9 @@ class FFmpegKitInitializer {
         console.log("Exception thrown inside global log callback.", err.stack);
       }
     }
+
+    if (FFmpegKitFactory.isShutdown())
+        return;
 
     // EXECUTE THE LOG STRATEGY
     switch (activeLogRedirectionStrategy) {
@@ -2169,17 +2245,19 @@ class FFmpegKitInitializer {
   }
 
   static processStatisticsCallbackEvent(event) {
-    let statistics = FFmpegKitFactory.mapToStatistics(event);
-    let sessionId = event.sessionId;
+      if (FFmpegKitFactory.isShutdown())
+          return;
+      let statistics = FFmpegKitFactory.mapToStatistics(event);
+      let sessionId = event.sessionId;
 
-    let activeStatisticsCallback = FFmpegKitFactory.getStatisticsCallback(sessionId);
-    if (activeStatisticsCallback !== undefined) {
-      try {
-        // NOTIFY SESSION CALLBACK DEFINED
-        activeStatisticsCallback(statistics);
-      } catch (err) {
-        console.log("Exception thrown inside session statistics callback.", err.stack);
-      }
+      let activeStatisticsCallback = FFmpegKitFactory.getStatisticsCallback(sessionId);
+      if (activeStatisticsCallback !== undefined) {
+          try {
+              // NOTIFY SESSION CALLBACK DEFINED
+              activeStatisticsCallback(statistics);
+          } catch (err) {
+              console.log("Exception thrown inside session statistics callback.", err.stack);
+          }
     }
 
     let globalStatisticsCallbackFunction = FFmpegKitFactory.getGlobalStatisticsCallback();
@@ -2194,60 +2272,74 @@ class FFmpegKitInitializer {
   }
 
   static processCompleteCallbackEvent(event) {
-    if (event !== undefined) {
-      let sessionId = event.sessionId;
+      if (FFmpegKitFactory.isShutdown())
+          return;
+      if (event !== undefined) {
+          let sessionId = event.sessionId;
 
-      FFmpegKitConfig.getSession(sessionId).then(session => {
-        if (session !== undefined) {
-          if (session.getCompleteCallback() !== undefined) {
-            try {
-              // NOTIFY SESSION CALLBACK DEFINED
-              session.getCompleteCallback()(session);
-            } catch (err) {
-              console.log("Exception thrown inside session complete callback.", err.stack);
-            }
-          }
+          FFmpegKitConfig.getSession(sessionId)
+              .then(session => {
+                  if (FFmpegKitFactory.isShutdown())
+                      return;
+                  if (session !== undefined) {
+                      if (session.getCompleteCallback() !== undefined) {
+                          try {
+                              // NOTIFY SESSION CALLBACK DEFINED
+                              session.getCompleteCallback()(session);
+                          } catch (err) {
+                              console.log("Exception thrown inside session complete callback.", err.stack);
+                          }
+                      }
 
-          if (session.isFFmpeg()) {
-            let globalFFmpegSessionCompleteCallback = FFmpegKitFactory.getGlobalFFmpegSessionCompleteCallback();
-            if (typeof globalFFmpegSessionCompleteCallback === 'function') {
-                try {
-                // NOTIFY GLOBAL CALLBACK DEFINED
-                globalFFmpegSessionCompleteCallback(session);
-              } catch (err) {
-                console.log("Exception thrown inside global complete callback.", err.stack);
-              }
-            }
-          } else if (session.isFFprobe()) {
-            let globalFFprobeSessionCompleteCallback = FFmpegKitFactory.getGlobalFFprobeSessionCompleteCallback();
-            if (typeof globalFFprobeSessionCompleteCallback === 'function') {
-              try {
-                // NOTIFY GLOBAL CALLBACK DEFINED
-                globalFFprobeSessionCompleteCallback(session);
-              } catch (err) {
-                console.log("Exception thrown inside global complete callback.", err.stack);
-              }
-            }
-          } else if (session.isMediaInformation()) {
-            let globalMediaInformationSessionCompleteCallback = FFmpegKitFactory.getGlobalMediaInformationSessionCompleteCallback();
-            if (typeof globalMediaInformationSessionCompleteCallback === 'function') {
-              try {
-                // NOTIFY GLOBAL CALLBACK DEFINED
-                globalMediaInformationSessionCompleteCallback(session);
-              } catch (err) {
-                console.log("Exception thrown inside global complete callback.", err.stack);
-              }
-            }
-          }
-        }
-      });
-    }
+                      if (FFmpegKitFactory.isShutdown())
+                          return;
+
+                      if (session.isFFmpeg()) {
+                          let globalFFmpegSessionCompleteCallback = FFmpegKitFactory.getGlobalFFmpegSessionCompleteCallback();
+                          if (typeof globalFFmpegSessionCompleteCallback === 'function') {
+                              try {
+                                  // NOTIFY GLOBAL CALLBACK DEFINED
+                                  globalFFmpegSessionCompleteCallback(session);
+                              } catch (err) {
+                                  console.log("Exception thrown inside global complete callback.", err.stack);
+                              }
+                          }
+                      } else if (session.isFFprobe()) {
+                          let globalFFprobeSessionCompleteCallback = FFmpegKitFactory.getGlobalFFprobeSessionCompleteCallback();
+                          if (typeof globalFFprobeSessionCompleteCallback === 'function') {
+                              try {
+                                  // NOTIFY GLOBAL CALLBACK DEFINED
+                                  globalFFprobeSessionCompleteCallback(session);
+                              } catch (err) {
+                                  console.log("Exception thrown inside global complete callback.", err.stack);
+                              }
+                          }
+                      } else if (session.isMediaInformation()) {
+                          let globalMediaInformationSessionCompleteCallback = FFmpegKitFactory.getGlobalMediaInformationSessionCompleteCallback();
+                          if (typeof globalMediaInformationSessionCompleteCallback === 'function') {
+                              try {
+                                  // NOTIFY GLOBAL CALLBACK DEFINED
+                                  globalMediaInformationSessionCompleteCallback(session);
+                              } catch (err) {
+                                  console.log("Exception thrown inside global complete callback.", err.stack);
+                              }
+                          }
+                      }
+                  }
+              })
+              .catch(error => {
+                  if (!FFmpegKitFactory.isShutdown())
+                      console.log("Complete callback session lookup failed.", error);
+              });
+      }
   }
 
   static processSessionDeletedCallbackEvent(event) {
-    if (event !== undefined) {
-      FFmpegKitFactory.deleteSession(event.sessionId);
-    }
+      if (FFmpegKitFactory.isShutdown())
+          return;
+      if (event !== undefined) {
+          FFmpegKitFactory.deleteSession(event.sessionId);
+      }
   }
 
   static async initialize(printLoadConfirmation = true) {
@@ -2264,7 +2356,7 @@ class FFmpegKitInitializer {
       this.#initialized = true;
       await this._applyInitialLogLevel();
       if (printLoadConfirmation) {
-        await FFmpegKitReactNativeModule.printLoadConfirmation();
+          await FFmpegKitReactNativeModule.printLoadConfirmation(FFmpegKitFactory.getVersion());
       }
     }).catch(error => {
       this.#initialized = false;

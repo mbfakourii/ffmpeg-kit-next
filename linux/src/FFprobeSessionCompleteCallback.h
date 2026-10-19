@@ -45,9 +45,7 @@ class FFprobeSession;
  *
  * @param session session of the completed execution
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::FFprobeSession> session)>
-    FFprobeSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::FFprobeSession> session)> FFprobeSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

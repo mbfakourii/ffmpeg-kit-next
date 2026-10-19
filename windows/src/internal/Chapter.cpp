@@ -19,8 +19,7 @@
 
 #include "Chapter.h"
 
-ffmpegkit::internal::Chapter::Chapter(std::shared_ptr<ffmpegkit::json::Value> chapterValue)
-    : _chapterValue{chapterValue} {}
+ffmpegkit::internal::Chapter::Chapter(std::shared_ptr<ffmpegkit::json::Value> chapterValue) : _chapterValue{chapterValue} {}
 
 std::shared_ptr<int64_t> ffmpegkit::internal::Chapter::getId() {
     return getNumberProperty(KeyId);
@@ -50,8 +49,7 @@ std::shared_ptr<ffmpegkit::json::Value> ffmpegkit::internal::Chapter::getTags() 
     return getProperty(KeyTags);
 }
 
-std::shared_ptr<std::string>
-ffmpegkit::internal::Chapter::getStringProperty(const char *key) {
+std::shared_ptr<std::string> ffmpegkit::internal::Chapter::getStringProperty(const char *key) {
     if (_chapterValue == nullptr) {
         return nullptr;
     }
@@ -62,8 +60,7 @@ ffmpegkit::internal::Chapter::getStringProperty(const char *key) {
     return property->getString();
 }
 
-std::shared_ptr<int64_t>
-ffmpegkit::internal::Chapter::getNumberProperty(const char *key) {
+std::shared_ptr<int64_t> ffmpegkit::internal::Chapter::getNumberProperty(const char *key) {
     if (_chapterValue == nullptr) {
         return nullptr;
     }
@@ -74,8 +71,7 @@ ffmpegkit::internal::Chapter::getNumberProperty(const char *key) {
     return property->getInt();
 }
 
-std::shared_ptr<ffmpegkit::json::Value>
-ffmpegkit::internal::Chapter::getProperty(const char *key) {
+std::shared_ptr<ffmpegkit::json::Value> ffmpegkit::internal::Chapter::getProperty(const char *key) {
     if (_chapterValue == nullptr) {
         return nullptr;
     }

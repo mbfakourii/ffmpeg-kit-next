@@ -48,9 +48,7 @@ class FFmpegSession;
  *
  * @param session session of the completed execution
  */
-typedef std::function<void(
-    const std::shared_ptr<ffmpegkit::FFmpegSession> session)>
-    FFmpegSessionCompleteCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::FFmpegSession> session)> FFmpegSessionCompleteCallback;
 
 } // namespace ffmpegkit
 

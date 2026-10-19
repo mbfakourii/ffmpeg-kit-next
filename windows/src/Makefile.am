@@ -30,7 +30,6 @@ libffmpegkit_la_SOURCES = \
     internal/ReturnCode.cpp \
     internal/Statistics.cpp \
     internal/StreamInformation.cpp \
-    internal/ffmpegkit_exception.cpp \
     ffmpeg_context.c \
     ffmpegkit_c.cpp \
     fftools/cmdutils.c \

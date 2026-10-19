@@ -33,8 +33,7 @@ namespace internal {
  *
  * @param log log entry
  */
-typedef std::function<void(const std::shared_ptr<ffmpegkit::internal::Log> log)>
-    LogCallback;
+typedef std::function<void(const std::shared_ptr<ffmpegkit::internal::Log> log)> LogCallback;
 
 } // namespace internal
 } // namespace ffmpegkit

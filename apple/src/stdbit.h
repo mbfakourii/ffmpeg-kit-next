@@ -63,20 +63,14 @@ static inline unsigned int stdc_leading_zeros_ui(unsigned int value)
     return value ? __builtin_clz(value) : (CHAR_BIT * sizeof (value));
 }
 
-static inline unsigned int stdc_leading_zeros_us(unsigned short value)
-{
-    return stdc_leading_zeros_ui(value)
-           - CHAR_BIT * (sizeof (int) - sizeof (value));
-}
+static inline unsigned int stdc_leading_zeros_us(unsigned short value) { return stdc_leading_zeros_ui(value) - CHAR_BIT * (sizeof(int) - sizeof(value)); }
 
 static inline unsigned int stdc_leading_zeros_uc(unsigned char value)
 {
     return stdc_leading_zeros_ui(value) - (CHAR_BIT * (sizeof (int) - 1));
 }
 #else
-static inline unsigned int __stdc_leading_zeros(unsigned long long value,
-                                                unsigned int size)
-{
+static inline unsigned int __stdc_leading_zeros(unsigned long long value, unsigned int size) {
     unsigned int zeros = size * CHAR_BIT;
 
     while (value != 0) {
@@ -145,39 +139,17 @@ static inline unsigned int stdc_leading_ones_uc(unsigned char value)
         __stdbit_generic_type_func(leading_ones, value)
 
 #if defined (__GNUC__) || defined (__clang__)
-static inline unsigned int stdc_trailing_zeros_ull(unsigned long long value)
-{
-    return value ? (unsigned int)__builtin_ctzll(value)
-                 : (CHAR_BIT * sizeof (value));
-}
+static inline unsigned int stdc_trailing_zeros_ull(unsigned long long value) { return value ? (unsigned int)__builtin_ctzll(value) : (CHAR_BIT * sizeof(value)); }
 
-static inline unsigned int stdc_trailing_zeros_ul(unsigned long value)
-{
-    return value ? (unsigned int)__builtin_ctzl(value)
-                 : (CHAR_BIT * sizeof (value));
-}
+static inline unsigned int stdc_trailing_zeros_ul(unsigned long value) { return value ? (unsigned int)__builtin_ctzl(value) : (CHAR_BIT * sizeof(value)); }
 
-static inline unsigned int stdc_trailing_zeros_ui(unsigned int value)
-{
-    return value ? (unsigned int)__builtin_ctz(value)
-                 : (CHAR_BIT * sizeof (value));
-}
+static inline unsigned int stdc_trailing_zeros_ui(unsigned int value) { return value ? (unsigned int)__builtin_ctz(value) : (CHAR_BIT * sizeof(value)); }
 
-static inline unsigned int stdc_trailing_zeros_us(unsigned short value)
-{
-    return value ? (unsigned int)__builtin_ctz(value)
-                 : (CHAR_BIT * sizeof (value));
-}
+static inline unsigned int stdc_trailing_zeros_us(unsigned short value) { return value ? (unsigned int)__builtin_ctz(value) : (CHAR_BIT * sizeof(value)); }
 
-static inline unsigned int stdc_trailing_zeros_uc(unsigned char value)
-{
-    return value ? (unsigned int)__builtin_ctz(value)
-                 : (CHAR_BIT * sizeof (value));
-}
+static inline unsigned int stdc_trailing_zeros_uc(unsigned char value) { return value ? (unsigned int)__builtin_ctz(value) : (CHAR_BIT * sizeof(value)); }
 #else
-static inline unsigned int __stdc_trailing_zeros(unsigned long long value,
-                                                 unsigned int size)
-{
+static inline unsigned int __stdc_trailing_zeros(unsigned long long value, unsigned int size) {
     unsigned int zeros = 0;
 
     if (!value)
@@ -413,9 +385,7 @@ static inline unsigned int stdc_count_ones_uc(unsigned char value)
     return __builtin_popcount(value);
 }
 #else
-static inline unsigned int __stdc_count_ones(unsigned long long value,
-                                             unsigned int size)
-{
+static inline unsigned int __stdc_count_ones(unsigned long long value, unsigned int size) {
     unsigned int ones = 0;
 
     for (unsigned int c = 0; c < (size * CHAR_BIT); c++) {

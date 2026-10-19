@@ -103,6 +103,7 @@ abstract class AbstractSession protected constructor(
     protected var failStackTrace: String? = null
 
     init {
+        // A SESSION CREATED AFTER SHUTDOWN BEGAN DOES NOT ENTER HISTORY
         FFmpegKitConfig.addSession(this)
     }
 

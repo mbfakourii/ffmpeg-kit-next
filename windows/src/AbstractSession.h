@@ -54,17 +54,10 @@ class AbstractSession : public Session {
      * @param logCallback session specific log callback
      * @param logRedirectionStrategy session specific log redirection strategy
      */
-    AbstractSession(const std::list<std::string> &arguments,
-                    const ffmpegkit::LogCallback logCallback,
-                    const LogRedirectionStrategy logRedirectionStrategy)
-        : _handle(nullptr, ffk_session_free) {
+    AbstractSession(const std::list<std::string> &arguments, const ffmpegkit::LogCallback logCallback, const LogRedirectionStrategy logRedirectionStrategy) : _handle(nullptr, ffk_session_free) {
         const ffmpegkit::detail::ArgumentArray argumentArray(arguments);
-        FFKSession *handle = ffk_abstract_session_create(
-            argumentArray.data(), argumentArray.size(),
-            ffmpegkit::detail::logCallbackFunction(logCallback),
-            ffmpegkit::detail::makeCallbackHolder(logCallback),
-            ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(),
-            static_cast<int>(logRedirectionStrategy));
+        FFKSession *handle =
+            ffk_abstract_session_create(argumentArray.data(), argumentArray.size(), ffmpegkit::detail::logCallbackFunction(logCallback), ffmpegkit::detail::makeCallbackHolder(logCallback), ffmpegkit::detail::callbackHolderDeleter<ffmpegkit::LogCallback>(), static_cast<int>(logRedirectionStrategy));
         ffmpegkit::detail::checkError();
         _handle.reset(handle, ffk_session_free);
     }
@@ -78,18 +71,15 @@ class AbstractSession : public Session {
      * @param timeout wait timeout in milliseconds
      */
     void waitForAsynchronousMessagesInTransmit(const int timeout) const {
-        ffk_session_wait_for_asynchronous_messages_in_transmit(handle(),
-                                                               timeout);
+        ffk_session_wait_for_asynchronous_messages_in_transmit(handle(), timeout);
         ffmpegkit::detail::checkError();
     }
 
     ffmpegkit::LogCallback getLogCallback() const override {
         ffk_log_cb callback = nullptr;
         void *userData = nullptr;
-        const int registered =
-            ffk_session_get_log_callback(handle(), &callback, &userData);
-        return ffmpegkit::detail::recoverCallback<ffmpegkit::LogCallback>(
-            registered, callback, userData, &ffmpegkit::detail::logTrampoline);
+        const int registered = ffk_session_get_log_callback(handle(), &callback, &userData);
+        return ffmpegkit::detail::recoverCallback<ffmpegkit::LogCallback>(registered, callback, userData, &ffmpegkit::detail::logTrampoline);
     }
 
     long getSessionId() const override {
@@ -98,79 +88,39 @@ class AbstractSession : public Session {
         return sessionId;
     }
 
-    std::chrono::time_point<std::chrono::system_clock>
-    getCreateTime() const override {
-        return ffmpegkit::detail::toTimePoint(
-            ffk_session_get_create_time(handle()));
-    }
+    std::chrono::time_point<std::chrono::system_clock> getCreateTime() const override { return ffmpegkit::detail::toTimePoint(ffk_session_get_create_time(handle())); }
 
-    std::chrono::time_point<std::chrono::system_clock>
-    getStartTime() const override {
-        return ffmpegkit::detail::toTimePoint(
-            ffk_session_get_start_time(handle()));
-    }
+    std::chrono::time_point<std::chrono::system_clock> getStartTime() const override { return ffmpegkit::detail::toTimePoint(ffk_session_get_start_time(handle())); }
 
-    std::chrono::time_point<std::chrono::system_clock>
-    getEndTime() const override {
-        return ffmpegkit::detail::toTimePoint(
-            ffk_session_get_end_time(handle()));
-    }
+    std::chrono::time_point<std::chrono::system_clock> getEndTime() const override { return ffmpegkit::detail::toTimePoint(ffk_session_get_end_time(handle())); }
 
     long getDuration() const override {
         return ffk_session_get_duration(handle());
     }
 
-    std::shared_ptr<std::list<std::string>> getArguments() const override {
-        return ffmpegkit::detail::takeStringList(
-            ffk_session_get_arguments(handle()));
-    }
+    std::shared_ptr<std::list<std::string>> getArguments() const override { return ffmpegkit::detail::takeStringList(ffk_session_get_arguments(handle())); }
 
     std::string getCommand() const override {
         return ffmpegkit::detail::takeString(ffk_session_get_command(handle()));
     }
 
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>>
-    getAllLogsWithTimeout(const int waitTimeout) const override {
-        return ffmpegkit::detail::takeLogList(
-            ffk_session_get_all_logs_with_timeout(handle(), waitTimeout));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>> getAllLogsWithTimeout(const int waitTimeout) const override { return ffmpegkit::detail::takeLogList(ffk_session_get_all_logs_with_timeout(handle(), waitTimeout)); }
 
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>>
-    getAllLogs() const override {
-        return ffmpegkit::detail::takeLogList(
-            ffk_session_get_all_logs(handle()));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>> getAllLogs() const override { return ffmpegkit::detail::takeLogList(ffk_session_get_all_logs(handle())); }
 
-    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>>
-    getLogs() const override {
-        return ffmpegkit::detail::takeLogList(ffk_session_get_logs(handle()));
-    }
+    std::shared_ptr<std::list<std::shared_ptr<ffmpegkit::Log>>> getLogs() const override { return ffmpegkit::detail::takeLogList(ffk_session_get_logs(handle())); }
 
-    std::string
-    getAllLogsAsStringWithTimeout(const int waitTimeout) const override {
-        return ffmpegkit::detail::takeString(
-            ffk_session_get_all_logs_as_string_with_timeout(handle(),
-                                                            waitTimeout));
-    }
+    std::string getAllLogsAsStringWithTimeout(const int waitTimeout) const override { return ffmpegkit::detail::takeString(ffk_session_get_all_logs_as_string_with_timeout(handle(), waitTimeout)); }
 
-    std::string getAllLogsAsString() const override {
-        return ffmpegkit::detail::takeString(
-            ffk_session_get_all_logs_as_string(handle()));
-    }
+    std::string getAllLogsAsString() const override { return ffmpegkit::detail::takeString(ffk_session_get_all_logs_as_string(handle())); }
 
-    std::string getLogsAsString() const override {
-        return ffmpegkit::detail::takeString(
-            ffk_session_get_logs_as_string(handle()));
-    }
+    std::string getLogsAsString() const override { return ffmpegkit::detail::takeString(ffk_session_get_logs_as_string(handle())); }
 
     std::string getOutput() const override {
         return ffmpegkit::detail::takeString(ffk_session_get_output(handle()));
     }
 
-    ffmpegkit::SessionState getState() const override {
-        return static_cast<ffmpegkit::SessionState>(
-            ffk_session_get_state(handle()));
-    }
+    ffmpegkit::SessionState getState() const override { return static_cast<ffmpegkit::SessionState>(ffk_session_get_state(handle())); }
 
     std::shared_ptr<ffmpegkit::ReturnCode> getReturnCode() const override {
         int value = 0;
@@ -180,30 +130,18 @@ class AbstractSession : public Session {
         return std::make_shared<ffmpegkit::ReturnCode>(value);
     }
 
-    std::string getFailStackTrace() const override {
-        return ffmpegkit::detail::takeString(
-            ffk_session_get_fail_stack_trace(handle()));
-    }
+    std::string getFailStackTrace() const override { return ffmpegkit::detail::takeString(ffk_session_get_fail_stack_trace(handle())); }
 
-    ffmpegkit::LogRedirectionStrategy
-    getLogRedirectionStrategy() const override {
-        return static_cast<ffmpegkit::LogRedirectionStrategy>(
-            ffk_session_get_log_redirection_strategy(handle()));
-    }
+    ffmpegkit::LogRedirectionStrategy getLogRedirectionStrategy() const override { return static_cast<ffmpegkit::LogRedirectionStrategy>(ffk_session_get_log_redirection_strategy(handle())); }
 
-    bool thereAreAsynchronousMessagesInTransmit() const override {
-        return ffk_session_there_are_asynchronous_messages_in_transmit(
-                   handle()) != 0;
-    }
+    bool thereAreAsynchronousMessagesInTransmit() const override { return ffk_session_there_are_asynchronous_messages_in_transmit(handle()) != 0; }
 
     void addLog(const std::shared_ptr<ffmpegkit::Log> log) override {
         if (log == nullptr) {
             return;
         }
         const std::string message = log->getMessage();
-        ffk_session_add_log(handle(), log->getSessionId(),
-                            static_cast<int>(log->getLevel()),
-                            message.c_str());
+        ffk_session_add_log(handle(), log->getSessionId(), static_cast<int>(log->getLevel()), message.c_str());
         ffmpegkit::detail::checkError();
     }
 
@@ -212,8 +150,7 @@ class AbstractSession : public Session {
         ffmpegkit::detail::checkError();
     }
 
-    void
-    complete(const std::shared_ptr<ffmpegkit::ReturnCode> returnCode) override {
+    void complete(const std::shared_ptr<ffmpegkit::ReturnCode> returnCode) override {
         if (returnCode == nullptr) {
             return;
         }
@@ -244,15 +181,11 @@ class AbstractSession : public Session {
     }
 
   protected:
-    template <typename SessionType>
-    friend std::shared_ptr<SessionType>
-        ffmpegkit::detail::adoptSession(FFKSession *);
-    friend FFKSession *
-    ffmpegkit::detail::sessionHandleOf(const ffmpegkit::AbstractSession &);
+    template <typename SessionType> friend std::shared_ptr<SessionType> ffmpegkit::detail::adoptSession(FFKSession *);
+    friend FFKSession *ffmpegkit::detail::sessionHandleOf(const ffmpegkit::AbstractSession &);
 
     /** Adopts a library session handle. */
-    explicit AbstractSession(FFKSession *handle)
-        : _handle(handle, ffk_session_free) {}
+    explicit AbstractSession(FFKSession *handle) : _handle(handle, ffk_session_free) {}
 
     FFKSession *handle() const { return _handle.get(); }
 

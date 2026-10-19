@@ -40,6 +40,8 @@ const DEFAULT_WAIT_TIMEOUT = 5000;
 // steps; this thread can afford to look more often because a tick is two counter reads
 // and a drain, and a shorter step keeps the common "nothing pending" case cheap.
 const MESSAGES_IN_TRANSMIT_POLL_INTERVAL = 20;
+// Poll step while shutdown waits for the native library to report done; see shutdownNative.
+const SHUTDOWN_POLL_INTERVAL = 20;
 const SESSION_TYPE_FFMPEG = 1;
 const SESSION_TYPE_FFPROBE = 2;
 const SESSION_TYPE_MEDIA_INFORMATION = 3;
@@ -60,6 +62,12 @@ const MSG_SESSION_DELETED = 6;
 // to the app. The app never holds the embind object, only the handle + its URL.
 const ioObjects = new Map();
 let ioSeq = 0;
+
+// Set by the first shutdown request, never cleared: from then on drained log and statistics
+// events are dropped instead of forwarded. See shutdownNative.
+let shutdownRequested = false;
+// Retained by the original request until its native worker serves it.
+const waitingSessions = new Map();
 
 function mkdirTree(path) {
   try {
@@ -594,25 +602,32 @@ function serializeHistorySessions(sessionIds) {
 function drainAndForward(id) {
   if (!Module._ffmpegkitDrainLogEvents) return;
 
+  // After shutdown the buffers are still drained, so messagesInTransmit() falls to 0, but
+  // nothing is forwarded: no log or statistics callback runs for these events on the page.
+  const forward = !shutdownRequested;
+
   const logs = Module._ffmpegkitDrainLogEvents();
   for (let i = 0; i < logs.length; i++) {
     const l = logs[i];
-    postMessage({
-      id,
-      type: MSG_LOG,
-      log: {
-        sessionId: Number(l.getSessionId()),
-        level: levelToNumber(l.getLevel()),
-        message: l.getMessage(),
-      },
-    });
+    if (forward) {
+        postMessage({
+            id,
+            type : MSG_LOG,
+            log : {
+                sessionId : Number(l.getSessionId()),
+                level : levelToNumber(l.getLevel()),
+                message : l.getMessage(),
+            },
+        });
+    }
     l.delete();
   }
 
   const stats = Module._ffmpegkitDrainStatisticsEvents();
   for (let i = 0; i < stats.length; i++) {
-    postMessage({ id, type: MSG_STATISTICS, statistics: statObject(stats[i]) });
-    stats[i].delete();
+      if (forward)
+          postMessage({id, type : MSG_STATISTICS, statistics : statObject(stats[i])});
+      stats[i].delete();
   }
 }
 
@@ -685,21 +700,51 @@ function waitForMessagesInTransmit(id, sessionId, timeout) {
 // making progress both settle the request - a trapped pthread reports through onAbort
 // above, and a throw from the embind calls below rejects (see the try/catch).
 function waitForSession(session, id) {
-  return new Promise((resolve, reject) => {
-    const tick = () => {
-      try {
-        drainAndForward(id);
-        if (sessionDone(session)) resolve();
-        else setTimeout(tick, 100);
-      } catch (err) {
-        // tick runs from a timer, outside the onmessage try/catch that turns failures
-        // into a MSG_ERROR reply. Reject so the awaiting handler reports it against
-        // this request id rather than letting it escape as an uncaught worker error.
-        reject(err);
-      }
-    };
-    setTimeout(tick, 50);
-  });
+    waitingSessions.set(id, session);
+    return new Promise((resolve, reject) => {
+               const tick = () => {
+                   try {
+                       drainAndForward(id);
+                       if (sessionDone(session))
+                           resolve();
+                       else
+                           setTimeout(tick, 100);
+                   } catch (err) {
+                       reject(err);
+                   }
+               };
+               setTimeout(tick, 50);
+           })
+        .finally(() => waitingSessions.delete(id));
+}
+
+// On the runtime thread native shutdown establishes the first-call grace/cleanup
+// deadlines and returns a snapshot without blocking. Polling keeps pthread startup
+// and filesystem proxies runnable. Retries only wait on the existing lifecycle.
+function shutdownNative(waitTimeout) {
+    shutdownRequested = true;
+    const timeout = Number(waitTimeout);
+    const waitMs = timeout < 0 || timeout === Infinity ? Infinity : Number.isFinite(timeout) ? Math.max(0, timeout) : 0;
+    const expireTime = Date.now() + waitMs;
+    const nativeTimeout = waitMs === Infinity ? -1 : Math.min(2147483647, Math.floor(waitMs));
+    return new Promise((resolve, reject) => {
+        let first = true;
+        const tick = () => {
+            try {
+                const done = Boolean(Module.FFmpegKitConfig.shutdown(first ? nativeTimeout : 0));
+                first = false;
+                drainAndForward(null);
+                if (done || Date.now() >= expireTime) {
+                    const queuedSessionIds = done ? [...waitingSessions.values() ].filter((session) => stateToNumber(session.getState()) === 0).map((session) => Number(session.getSessionId())) : [];
+                    resolve({done, queuedSessionIds});
+                } else
+                    setTimeout(tick, SHUTDOWN_POLL_INTERVAL);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        tick();
+    });
 }
 
 // ---- Message handling ----------------------------------------------------------
@@ -827,7 +872,7 @@ self.onmessage = async (event) => {
         break;
       }
       case 'mediaInformationJsonParserFromWithError': {
-        const info = Module.MediaInformationJsonParser.fromWithError(args.ffprobeJsonOutput || '');
+        const info = await Module.MediaInformationJsonParser.fromWithError(args.ffprobeJsonOutput || '');
         postMessage({
           id,
           type: MSG_RESULT,
@@ -844,6 +889,11 @@ self.onmessage = async (event) => {
         Module.FFmpegKitConfig.disableRedirection();
         postMessage({ id, type: MSG_RESULT, result: { ok: true } });
         break;
+      }
+      case 'shutdown': {
+          const result = await shutdownNative(args.waitTimeout);
+          postMessage({id, type : MSG_RESULT, result});
+          break;
       }
       case 'setSessionHistorySize': {
         Module.FFmpegKitConfig.setSessionHistorySize(args.size);

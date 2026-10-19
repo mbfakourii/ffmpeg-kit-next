@@ -23,33 +23,73 @@ import com.arthenica.smartexception.java.Exceptions
 
 /**
  * <p>Executes a MediaInformation session asynchronously.
+ *
+ * <p>The task claims its session when its executor runs it. Claimed before shutdown, the session
+ * runs; claimed during shutdown grace, it fails with the reason "FFmpegKit has been shut down"
+ * without native execution and its completion callbacks may still run; claimed later, it fails
+ * and its completion callbacks are dropped. The task releases its session before the execution
+ * stops being counted, so an executor that keeps the task does not keep the session.
  */
 open class AsyncGetMediaInformationTask @JvmOverloads constructor(
-    private val mediaInformationSession: MediaInformationSession,
-    private val waitTimeout: Int = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT
+    mediaInformationSession: MediaInformationSession,
+    @Suppress("unused") private val waitTimeout: Int = AbstractSession.DEFAULT_TIMEOUT_FOR_ASYNCHRONOUS_MESSAGES_IN_TRANSMIT
 ) : Runnable {
 
-    private val completeCallback: MediaInformationSessionCompleteCallback? = mediaInformationSession.getCompleteCallback()
+    /** Moved out when the task runs, so an executor that keeps the task does not keep the session. */
+    private var mediaInformationSession: MediaInformationSession? = mediaInformationSession
+
+    /** Set when FFmpegKitConfig counted this task as queued when it submitted it. */
+    internal var queued = false
 
     override fun run() {
-        FFmpegKitConfig.getMediaInformationExecute(mediaInformationSession, waitTimeout)
+        val state = LibraryState.claim(queued)
+        try {
+            runClaimed(state)
+        } finally {
+            if (state != LibraryState.TERMINATED) {
+                LibraryState.endExecution()
+            }
+        }
+    }
 
-        if (completeCallback != null) {
+    /** Runs or rejects the claimed session; the session is released when this returns. */
+    private fun runClaimed(state: Int) {
+        val session = mediaInformationSession ?: return
+        mediaInformationSession = null
+
+        if (state == LibraryState.RUNNING) {
+            FFmpegKitConfig.runMediaInformationSession(session)
+        } else {
+            LibraryState.reject(session)
+        }
+        if (state != LibraryState.TERMINATED) {
+            notifyComplete(session)
+        }
+    }
+
+    /** Calls the session's complete callback, then the global one, each admitted separately. */
+    private fun notifyComplete(session: MediaInformationSession) {
+        val completeCallback = session.getCompleteCallback()
+        if (completeCallback != null && LibraryState.beginCallback(true)) {
             try {
                 // NOTIFY SESSION CALLBACK DEFINED
-                completeCallback.apply(mediaInformationSession)
+                completeCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside session complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
 
         val globalMediaInformationSessionCompleteCallback = FFmpegKitConfig.getMediaInformationSessionCompleteCallback()
-        if (globalMediaInformationSessionCompleteCallback != null) {
+        if (globalMediaInformationSessionCompleteCallback != null && LibraryState.beginCallback(true)) {
             try {
-                // NOTIFY GLOBAL CALLBACK DEFINEDs
-                globalMediaInformationSessionCompleteCallback.apply(mediaInformationSession)
+                // NOTIFY GLOBAL CALLBACK DEFINED
+                globalMediaInformationSessionCompleteCallback.apply(session)
             } catch (e: Exception) {
                 android.util.Log.e(FFmpegKitConfig.TAG, String.format("Exception thrown inside global complete callback.%s", Exceptions.getStackTraceString(e)))
+            } finally {
+                LibraryState.endCallback()
             }
         }
     }

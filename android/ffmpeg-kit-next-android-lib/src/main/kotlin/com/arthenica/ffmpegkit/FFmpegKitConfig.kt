@@ -47,9 +47,11 @@ import java.util.StringTokenizer
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.withLock
 
 /**
  * <p>Configuration class of <code>FFmpegKit</code> library.
@@ -80,6 +82,12 @@ open class FFmpegKitConfig private constructor() {
 
         internal const val FFMPEG_KIT_STREAM_TYPE_INPUT = 1
         internal const val FFMPEG_KIT_STREAM_TYPE_OUTPUT = 2
+
+        /** Longest completion callback grace of the first shutdown call. */
+        private const val SHUTDOWN_GRACE_MS = 2000L
+
+        /** Longest wait after grace before shutdown clears the session history. */
+        private const val SHUTDOWN_CLEANUP_MS = 1000L
 
         /**
          * Generates ids for named ffmpeg kit pipes and saf protocol urls.
@@ -175,6 +183,8 @@ open class FFmpegKitConfig private constructor() {
          *
          * <p>Note that redirection is enabled by default. If you do not want to use its functionality
          * please use {@link #disableRedirection()} to disable it.
+         *
+         * <p>Does nothing after shutdown.
          */
         @JvmStatic
         fun enableRedirection() {
@@ -192,6 +202,171 @@ open class FFmpegKitConfig private constructor() {
         fun disableRedirection() {
             disableNativeRedirection()
         }
+
+        /**
+         * <p>Permanently shuts down FFmpegKit. The first call requests cancellation of running
+         * FFmpeg sessions, closes every <code>ffkitstream:</code> stream, turns log and statistics
+         * redirection off for good and drops undelivered log and statistics messages. Log,
+         * statistics and session delete callbacks stop being invoked at once. Running FFprobe and
+         * media information executions cannot be cancelled; they keep their native result.
+         *
+         * <p>New executions fail with the reason "FFmpegKit has been shut down", without native
+         * execution, completion callbacks or a session history entry. Tasks already submitted stay
+         * on their executors: one served while completion callbacks are still admitted fails
+         * without native execution and may run its completion callbacks; one served later fails
+         * and drops them. Shutdown never cancels their <code>Future</code>s and never shuts down an
+         * <code>ExecutorService</code>, its own or a caller's.
+         *
+         * <p><code>waitTimeout</code> is the total wait budget of this call, in milliseconds. The
+         * first call admits completion callbacks for at most two seconds of it, then waits at most
+         * one more second before it clears the session history. Zero does not wait and admits no
+         * completion callback after the call. A negative value waits without a limit, but still
+         * admits completion callbacks for at most two seconds. A later call only waits, with its own
+         * budget: it does not restart grace, admit callbacks again or repeat cancellation. Call
+         * again after <code>false</code> to wait longer.
+         *
+         * <p>In-flight results, full output and completion callbacks are not guaranteed. For
+         * predictable results, cancel running sessions and wait for their execution and output
+         * before shutting down.
+         *
+         * <p><code>true</code> does not mean that every session or callback capture was released:
+         * tasks still queued on an executor, session handles, global callbacks and session delete
+         * listeners keep theirs. Stop submissions and stream writers first, and keep what callbacks
+         * use valid until they are released. Never wait while holding a lock or thread that running
+         * work or a callback needs: for example, do not call this with a negative timeout on the
+         * main thread while a callback posts synchronously to it. An interrupted call returns
+         * <code>false</code> and keeps the interrupt status.
+         *
+         * @param waitTimeout total wait budget in milliseconds; zero does not wait, a negative value
+         *                    waits without a limit
+         * @return true when running executions, admitted callbacks and message delivery have
+         * stopped and the session history was cleared; false at the deadline, or at once when
+         * called from an execution, a callback or other library work that cannot wait for itself.
+         * Queued tasks are not waited for after grace
+         */
+        @JvmStatic
+        fun shutdown(waitTimeout: Int): Boolean {
+            val now = System.nanoTime()
+            val unlimited = waitTimeout < 0
+            val deadline = if (unlimited) now else now + TimeUnit.MILLISECONDS.toNanos(waitTimeout.toLong())
+            val cleanupDeadline: Long? = LibraryState.lock.withLock {
+                if (LibraryState.state != LibraryState.RUNNING) {
+                    null
+                } else {
+                    LibraryState.state = LibraryState.TERMINATING
+                    LibraryState.cleanupPending = true
+                    val grace = now + TimeUnit.MILLISECONDS.toNanos(SHUTDOWN_GRACE_MS)
+                    LibraryState.graceDeadline = if (unlimited) grace else earlier(grace, deadline)
+                    val cleanup = LibraryState.graceDeadline + TimeUnit.MILLISECONDS.toNanos(SHUTDOWN_CLEANUP_MS)
+                    if (unlimited) cleanup else earlier(cleanup, deadline)
+                }
+            }
+            if (cleanupDeadline != null) {
+                nativeShutdown()
+
+                // RETRIES ONLY WAIT; CANCELLATION AND THE FIRST-CALL DEADLINES STAY FIXED
+                try {
+                    val coordinator = Thread({ finishShutdown(cleanupDeadline) }, "ffmpeg-kit-shutdown")
+                    coordinator.isDaemon = true
+                    coordinator.start()
+                } catch (t: Throwable) {
+                    // IF THE COORDINATOR CANNOT START, DO NOT LEAVE CLEANUP PENDING FOREVER. CLOSE
+                    // ADMISSION AND RELEASE HISTORY WITHOUT A GRACE WAIT
+                    finishShutdown(now)
+                    throw t
+                }
+            }
+            if (LibraryState.isLibraryWork()) {
+                return false
+            }
+
+            return awaitWork(deadline, unlimited) {
+                !LibraryState.cleanupPending && LibraryState.pendingExecutions == 0 && LibraryState.activeCallbacks == 0
+            }
+        }
+
+        /**
+         * <p>Returns whether shutdown was called. True from the first call on, also while that
+         * shutdown has not finished.
+         *
+         * @return true after shutdown, false before
+         */
+        @JvmStatic
+        fun isShutdown(): Boolean {
+            return LibraryState.state != LibraryState.RUNNING
+        }
+
+        /** Closes completion admission after grace, then releases history outside the locks. */
+        private fun finishShutdown(cleanupDeadline: Long) {
+            LibraryState.enterWork()
+            try {
+                val graceDeadline = LibraryState.lock.withLock { LibraryState.graceDeadline }
+                awaitWork(earlier(graceDeadline, cleanupDeadline), false) {
+                    LibraryState.pendingExecutions == 0 && LibraryState.queuedExecutionCount == 0 && LibraryState.activeCallbacks == 0
+                }
+                LibraryState.lock.withLock {
+                    LibraryState.state = LibraryState.TERMINATED
+                    LibraryState.changed.signalAll()
+                }
+                awaitWork(cleanupDeadline, false) {
+                    LibraryState.pendingExecutions == 0 && LibraryState.activeCallbacks == 0
+                }
+
+                // RUNNING TASKS, UNSERVED TASKS AND CALLER HANDLES KEEP THEIR OWN REFERENCES
+                clearSessions()
+            } finally {
+                LibraryState.lock.withLock {
+                    LibraryState.cleanupPending = false
+                    LibraryState.changed.signalAll()
+                }
+                LibraryState.leaveWork()
+            }
+        }
+
+        /**
+         * Waits until <code>stopped</code> holds and no delivery loop runs, or until
+         * <code>deadline</code>. Never holds the library state lock while it waits for the native
+         * delivery loops, which may need it.
+         *
+         * @param deadline  System.nanoTime() to wait until, ignored when unlimited
+         * @param unlimited wait without a deadline
+         * @param stopped   condition evaluated under the library state lock
+         * @return true when the condition held and no delivery loop ran
+         */
+        private fun awaitWork(deadline: Long, unlimited: Boolean, stopped: () -> Boolean): Boolean {
+            try {
+                while (true) {
+                    LibraryState.lock.withLock {
+                        while (!stopped()) {
+                            if (unlimited) {
+                                LibraryState.changed.await()
+                            } else {
+                                val remaining = deadline - System.nanoTime()
+                                if (remaining <= 0) {
+                                    return false
+                                }
+                                LibraryState.changed.awaitNanos(remaining)
+                            }
+                        }
+                    }
+                    val remainingMs = if (unlimited) -1L else {
+                        TimeUnit.NANOSECONDS.toMillis(maxOf(0L, deadline - System.nanoTime()) + 999_999L)
+                    }
+                    if (!nativeAwaitDeliveryLoops(remainingMs)) {
+                        return false
+                    }
+                    if (LibraryState.lock.withLock { stopped() }) {
+                        return true
+                    }
+                }
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+
+        /** Returns the earlier of two System.nanoTime() values. */
+        private fun earlier(first: Long, second: Long): Long = if (first - second < 0) first else second
 
         /**
          * <p>Log redirection method called by the native library.
@@ -222,7 +397,7 @@ open class FFmpegKitConfig private constructor() {
                 session.addLog(log)
 
                 val sessionLogCallback = session.getLogCallback()
-                if (sessionLogCallback != null) {
+                if (sessionLogCallback != null && LibraryState.beginCallback(false)) {
                     sessionCallbackDefined = true
 
                     try {
@@ -236,12 +411,14 @@ open class FFmpegKitConfig private constructor() {
                                 Exceptions.getStackTraceString(e)
                             )
                         )
+                    } finally {
+                        LibraryState.endCallback()
                     }
                 }
             }
 
             val globalLogCallbackFunction = globalLogCallback
-            if (globalLogCallbackFunction != null) {
+            if (globalLogCallbackFunction != null && LibraryState.beginCallback(false)) {
                 globalCallbackDefined = true
 
                 try {
@@ -255,6 +432,8 @@ open class FFmpegKitConfig private constructor() {
                             Exceptions.getStackTraceString(e)
                         )
                     )
+                } finally {
+                    LibraryState.endCallback()
                 }
             }
 
@@ -353,7 +532,7 @@ open class FFmpegKitConfig private constructor() {
                 ffmpegSession.addStatistics(statistics)
 
                 val sessionStatisticsCallback = ffmpegSession.getStatisticsCallback()
-                if (sessionStatisticsCallback != null) {
+                if (sessionStatisticsCallback != null && LibraryState.beginCallback(false)) {
                     try {
                         // NOTIFY SESSION CALLBACK IF DEFINED
                         sessionStatisticsCallback.apply(statistics)
@@ -365,12 +544,14 @@ open class FFmpegKitConfig private constructor() {
                                 Exceptions.getStackTraceString(e)
                             )
                         )
+                    } finally {
+                        LibraryState.endCallback()
                     }
                 }
             }
 
             val globalStatisticsCallbackFunction = globalStatisticsCallback
-            if (globalStatisticsCallbackFunction != null) {
+            if (globalStatisticsCallbackFunction != null && LibraryState.beginCallback(false)) {
                 try {
                     // NOTIFY GLOBAL CALLBACK IF DEFINED
                     globalStatisticsCallbackFunction.apply(statistics)
@@ -382,6 +563,8 @@ open class FFmpegKitConfig private constructor() {
                             Exceptions.getStackTraceString(e)
                         )
                     )
+                } finally {
+                    LibraryState.endCallback()
                 }
             }
         }
@@ -867,10 +1050,30 @@ open class FFmpegKitConfig private constructor() {
         /**
          * <p>Synchronously executes the FFmpeg session provided.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" and
+         * does not run.
+         *
          * @param ffmpegSession FFmpeg session which includes command options/arguments
          */
         @JvmStatic
         fun ffmpegExecute(@NonNull ffmpegSession: FFmpegSession) {
+            if (!LibraryState.beginExecution()) {
+                LibraryState.reject(ffmpegSession)
+                return
+            }
+            try {
+                runFFmpegSession(ffmpegSession)
+            } finally {
+                LibraryState.endExecution()
+            }
+        }
+
+        /**
+         * Runs a session without admitting it. Called by the execute method that admitted it, and by
+         * an asynchronous task that claimed it while running.
+         */
+        @JvmSynthetic
+        internal fun runFFmpegSession(ffmpegSession: FFmpegSession) {
             ffmpegSession.startRunning()
 
             try {
@@ -893,10 +1096,30 @@ open class FFmpegKitConfig private constructor() {
         /**
          * <p>Synchronously executes the FFprobe session provided.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" and
+         * does not run.
+         *
          * @param ffprobeSession FFprobe session which includes command options/arguments
          */
         @JvmStatic
         fun ffprobeExecute(@NonNull ffprobeSession: FFprobeSession) {
+            if (!LibraryState.beginExecution()) {
+                LibraryState.reject(ffprobeSession)
+                return
+            }
+            try {
+                runFFprobeSession(ffprobeSession)
+            } finally {
+                LibraryState.endExecution()
+            }
+        }
+
+        /**
+         * Runs a session without admitting it. Called by the execute method that admitted it, and by
+         * an asynchronous task that claimed it while running.
+         */
+        @JvmSynthetic
+        internal fun runFFprobeSession(ffprobeSession: FFprobeSession) {
             ffprobeSession.startRunning()
 
             try {
@@ -921,6 +1144,9 @@ open class FFmpegKitConfig private constructor() {
         /**
          * <p>Synchronously executes the media information session provided.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" and
+         * does not run.
+         *
          * @param mediaInformationSession media information session which includes command options/arguments
          * @param waitTimeout             max time to wait until media information is transmitted
          */
@@ -929,6 +1155,23 @@ open class FFmpegKitConfig private constructor() {
             @NonNull mediaInformationSession: MediaInformationSession,
             waitTimeout: Int
         ) {
+            if (!LibraryState.beginExecution()) {
+                LibraryState.reject(mediaInformationSession)
+                return
+            }
+            try {
+                runMediaInformationSession(mediaInformationSession)
+            } finally {
+                LibraryState.endExecution()
+            }
+        }
+
+        /**
+         * Runs a session without admitting it. Called by the execute method that admitted it, and by
+         * an asynchronous task that claimed it while running.
+         */
+        @JvmSynthetic
+        internal fun runMediaInformationSession(mediaInformationSession: MediaInformationSession) {
             mediaInformationSession.startRunning()
 
             try {
@@ -972,14 +1215,17 @@ open class FFmpegKitConfig private constructor() {
          * You must use an {@link FFmpegSessionCompleteCallback} if you want to be notified about the
          * result.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
+         *
          * @param ffmpegSession FFmpeg session which includes command options/arguments
          */
         @JvmStatic
         fun asyncFFmpegExecute(@NonNull ffmpegSession: FFmpegSession) {
-            val asyncFFmpegExecuteTask = AsyncFFmpegExecuteTask(ffmpegSession)
-            synchronized(asyncExecutorServiceLock) {
-                val future = asyncExecutorService.submit(asyncFFmpegExecuteTask)
-                ffmpegSession.setFuture(future)
+            submitAsyncExecution(ffmpegSession, null) {
+                AsyncFFmpegExecuteTask(ffmpegSession).also { it.queued = true }
             }
         }
 
@@ -990,6 +1236,11 @@ open class FFmpegKitConfig private constructor() {
          * You must use an {@link FFmpegSessionCompleteCallback} if you want to be notified about the
          * result.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
+         *
          * @param ffmpegSession   FFmpeg session which includes command options/arguments
          * @param executorService executor service that will be used to run this asynchronous operation
          */
@@ -998,26 +1249,8 @@ open class FFmpegKitConfig private constructor() {
             @NonNull ffmpegSession: FFmpegSession,
             @NonNull executorService: ExecutorService
         ) {
-            val asyncFFmpegExecuteTask = AsyncFFmpegExecuteTask(ffmpegSession)
-            val future = executorService.submit(asyncFFmpegExecuteTask)
-            ffmpegSession.setFuture(future)
-        }
-
-        /**
-         * <p>Starts an asynchronous FFprobe execution for the given session.
-         *
-         * <p>Note that this method returns immediately and does not wait the execution to complete.
-         * You must use an {@link FFprobeSessionCompleteCallback} if you want to be notified about the
-         * result.
-         *
-         * @param ffprobeSession FFprobe session which includes command options/arguments
-         */
-        @JvmStatic
-        fun asyncFFprobeExecute(@NonNull ffprobeSession: FFprobeSession) {
-            val asyncFFmpegExecuteTask = AsyncFFprobeExecuteTask(ffprobeSession)
-            synchronized(asyncExecutorServiceLock) {
-                val future = asyncExecutorService.submit(asyncFFmpegExecuteTask)
-                ffprobeSession.setFuture(future)
+            submitAsyncExecution(ffmpegSession, executorService) {
+                AsyncFFmpegExecuteTask(ffmpegSession).also { it.queued = true }
             }
         }
 
@@ -1028,6 +1261,32 @@ open class FFmpegKitConfig private constructor() {
          * You must use an {@link FFprobeSessionCompleteCallback} if you want to be notified about the
          * result.
          *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
+         *
+         * @param ffprobeSession FFprobe session which includes command options/arguments
+         */
+        @JvmStatic
+        fun asyncFFprobeExecute(@NonNull ffprobeSession: FFprobeSession) {
+            submitAsyncExecution(ffprobeSession, null) {
+                AsyncFFprobeExecuteTask(ffprobeSession).also { it.queued = true }
+            }
+        }
+
+        /**
+         * <p>Starts an asynchronous FFprobe execution for the given session.
+         *
+         * <p>Note that this method returns immediately and does not wait the execution to complete.
+         * You must use an {@link FFprobeSessionCompleteCallback} if you want to be notified about the
+         * result.
+         *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
+         *
          * @param ffprobeSession  FFprobe session which includes command options/arguments
          * @param executorService executor service that will be used to run this asynchronous operation
          */
@@ -1036,9 +1295,9 @@ open class FFmpegKitConfig private constructor() {
             @NonNull ffprobeSession: FFprobeSession,
             @NonNull executorService: ExecutorService
         ) {
-            val asyncFFmpegExecuteTask = AsyncFFprobeExecuteTask(ffprobeSession)
-            val future = executorService.submit(asyncFFmpegExecuteTask)
-            ffprobeSession.setFuture(future)
+            submitAsyncExecution(ffprobeSession, executorService) {
+                AsyncFFprobeExecuteTask(ffprobeSession).also { it.queued = true }
+            }
         }
 
         /**
@@ -1047,6 +1306,11 @@ open class FFmpegKitConfig private constructor() {
          * <p>Note that this method returns immediately and does not wait the execution to complete.
          * You must use a {@link MediaInformationSessionCompleteCallback} if you want to be notified
          * about the result.
+         *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
          *
          * @param mediaInformationSession media information session which includes command
          *                                options/arguments
@@ -1057,11 +1321,8 @@ open class FFmpegKitConfig private constructor() {
             @NonNull mediaInformationSession: MediaInformationSession,
             waitTimeout: Int
         ) {
-            val asyncGetMediaInformationTask =
-                AsyncGetMediaInformationTask(mediaInformationSession, waitTimeout)
-            synchronized(asyncExecutorServiceLock) {
-                val future = asyncExecutorService.submit(asyncGetMediaInformationTask)
-                mediaInformationSession.setFuture(future)
+            submitAsyncExecution(mediaInformationSession, null) {
+                AsyncGetMediaInformationTask(mediaInformationSession, waitTimeout).also { it.queued = true }
             }
         }
 
@@ -1071,6 +1332,11 @@ open class FFmpegKitConfig private constructor() {
          * <p>Note that this method returns immediately and does not wait the execution to complete.
          * You must use a {@link MediaInformationSessionCompleteCallback} if you want to be notified
          * about the result.
+         *
+         * <p>After shutdown the session fails with the reason "FFmpegKit has been shut down" without
+         * native execution, completion callbacks or a submission to an executor. A task submitted
+         * earlier but not run yet fails on its executor's thread; its completion callbacks may run
+         * during shutdown grace and are dropped after it.
          *
          * @param mediaInformationSession media information session which includes command
          *                                options/arguments
@@ -1084,10 +1350,37 @@ open class FFmpegKitConfig private constructor() {
             @NonNull executorService: ExecutorService,
             waitTimeout: Int
         ) {
-            val asyncGetMediaInformationTask =
-                AsyncGetMediaInformationTask(mediaInformationSession, waitTimeout)
-            val future = executorService.submit(asyncGetMediaInformationTask)
-            mediaInformationSession.setFuture(future)
+            submitAsyncExecution(mediaInformationSession, executorService) {
+                AsyncGetMediaInformationTask(mediaInformationSession, waitTimeout).also { it.queued = true }
+            }
+        }
+
+        /**
+         * Submits a task to its executor and keeps it there. The task counts as queued until it
+         * claims its session under the shutdown lock; one served late only rejects and releases
+         * it. After shutdown began, the session fails at once and nothing is submitted.
+         */
+        private fun submitAsyncExecution(
+            session: AbstractSession,
+            executorService: ExecutorService?,
+            task: () -> Runnable
+        ) {
+            if (!LibraryState.acceptSubmission()) {
+                LibraryState.reject(session)
+                return
+            }
+            try {
+                if (executorService == null) {
+                    synchronized(asyncExecutorServiceLock) {
+                        session.setFuture(asyncExecutorService.submit(task()))
+                    }
+                } else {
+                    session.setFuture(executorService.submit(task()))
+                }
+            } catch (t: Throwable) {
+                LibraryState.abandonSubmission()
+                throw t
+            }
         }
 
         /**
@@ -1624,9 +1917,10 @@ open class FFmpegKitConfig private constructor() {
                 /*
                  * ASYNC SESSIONS CALL THIS METHOD TWICE
                  * THIS CHECK PREVENTS ADDING THE SAME SESSION AGAIN
+                 * SESSIONS CREATED AFTER SHUTDOWN BEGAN DO NOT ENTER HISTORY
                  */
                 val sessionAlreadyAdded = sessionHistoryMap.containsKey(session.getSessionId())
-                if (!sessionAlreadyAdded) {
+                if (LibraryState.state == LibraryState.RUNNING && !sessionAlreadyAdded) {
                     sessionHistoryMap[session.getSessionId()] = session
                     sessionHistoryList.add(session)
                     deleteExpiredSessionsLocked()
@@ -1773,6 +2067,10 @@ open class FFmpegKitConfig private constructor() {
                     continue
                 }
 
+                // LISTENERS ARE ADMITTED LIKE CALLBACKS; NONE IS AFTER SHUTDOWN BEGAN
+                if (!LibraryState.beginCallback(false)) {
+                    return
+                }
                 try {
                     listener.sessionDeleted(sessionId)
                 } catch (e: Exception) {
@@ -1783,6 +2081,8 @@ open class FFmpegKitConfig private constructor() {
                             Exceptions.getStackTraceString(e)
                         )
                     )
+                } finally {
+                    LibraryState.endCallback()
                 }
             }
         }
@@ -2031,6 +2331,24 @@ open class FFmpegKitConfig private constructor() {
          */
         @JvmStatic
         private external fun disableNativeRedirection()
+
+        /**
+         * <p>Performs the native part of the first shutdown call: drops new log and statistics
+         * messages, keeps redirection off for good, requests cancellation of running FFmpeg
+         * sessions, closes every stream, disables redirection and discards undelivered messages.
+         */
+        @JvmStatic
+        private external fun nativeShutdown()
+
+        /**
+         * <p>Waits natively until no delivery loop runs.
+         *
+         * @param timeoutMs maximum wait in milliseconds; zero only checks, a negative value waits
+         *                  without a limit
+         * @return true when no delivery loop runs
+         */
+        @JvmStatic
+        private external fun nativeAwaitDeliveryLoops(timeoutMs: Long): Boolean
 
         /**
          * Returns native log level.

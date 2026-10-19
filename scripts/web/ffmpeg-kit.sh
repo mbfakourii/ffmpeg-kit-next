@@ -74,11 +74,12 @@ fi
 
 emmake make -j$(get_cpu_count) install 1>>"${BASEDIR}"/build.log 2>&1
 
-if [ $? -eq 0 ]; then
-  echo "ok"
-else
+if [ $? -ne 0 ]; then
   exit 1
 fi
+
+validate_web_ffmpegkit_library "${FFMPEG_KIT_LIBRARY_PATH}/lib" || return 1
+echo "ok"
 
 # CREATE PACKAGE CONFIG MANUALLY
 create_ffmpegkit_package_config "$(get_ffmpeg_kit_version)" || return 1

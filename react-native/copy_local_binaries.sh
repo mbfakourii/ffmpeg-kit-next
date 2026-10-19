@@ -12,8 +12,8 @@
 #               -> ios/Frameworks/
 #
 # These destinations match the plugin build configuration:
-#   * android/build.gradle  resolves the AAR via maven { url "$projectDir/libs-maven" }
-#   * ffmpeg-kit-react-native.podspec  vendors ios/Frameworks/*.xcframework
+#   * android/build.gradle  resolves the single AAR version in android/libs-maven
+#   * ffmpeg-kit-next-react-native.podspec  vendors ios/Frameworks/*.xcframework
 #
 # Build the binaries first from the repository root, e.g.:
 #   ./nix-android.sh -p <profile>
